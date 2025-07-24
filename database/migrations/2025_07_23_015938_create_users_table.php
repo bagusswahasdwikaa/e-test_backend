@@ -12,12 +12,12 @@ return new class extends Migration
     public function up()
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id('user_id'); // Mengganti nama ID menjadi user_id
+            $table->id(); // default 'id'
             $table->string('first_name');
             $table->string('last_name');
             $table->string('email')->unique();
             $table->string('password');
-            $table->string('role')->default('user'); // Menambahkan kolom role dengan default 'user'
+            $table->string('role')->default('user');
             $table->timestamps();
         });
     }

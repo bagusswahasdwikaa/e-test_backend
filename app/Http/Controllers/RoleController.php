@@ -16,19 +16,19 @@ class RoleController extends Controller
     public function assignRole(Request $request)
     {
         // Validasi input
-        $request->validate([
+        $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
             'role' => 'required|string|in:admin,user',
         ]);
 
         // Temukan user berdasarkan ID
-        $user = User::findOrFail($request->user_id);
+        $user = User::findOrFail($validated['user_id']);
 
         // Berikan role kepada user
-        $user->assignRole($request->role);
+        $user->assignRole($validated['role']);
 
         return response()->json([
-            'message' => "Role '{$request->role}' berhasil diberikan kepada user dengan ID {$request->user_id}!",
+            'message' => "Role '{$validated['role']}' berhasil diberikan kepada user dengan ID {$validated['user_id']}!",
         ]);
     }
 }
