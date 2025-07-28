@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
-use Laravel\Sanctum\HasApiTokens; 
+use Laravel\Sanctum\HasApiTokens;
 
 class AuthController extends Controller
 {
@@ -15,23 +15,27 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|string|email|unique:users',
-            'password' => 'required|string|min:6|confirmed',
+            'last_name'  => 'required|string|max:255',
+            'email'      => 'required|string|email|unique:users',
+            'password'   => 'required|string|min:6|confirmed',
         ]);
 
         $user = User::create([
             'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
-            'email' => $validated['email'],
-            'password' => bcrypt($validated['password']),
-            'role' => 'user',
+            'last_name'  => $validated['last_name'],
+            'email'      => $validated['email'],
+            'password'   => bcrypt($validated['password']),
+            'role'       => 'user',
         ]);
 
+        $token = $user->createToken('auth_token', ['user'])->plainTextToken;
 
-        $token = $user->createToken('auth_token',['user'])->plainTextToken;
-
-        return response()->json(['message'=>'Registrasi berhasil','user'=>$user,'token'=>$token], 201);
+        return response()->json([
+            'message' => 'Registrasi berhasil',
+            'user'    => $user,
+            'role'    => $user->role, // Mengembalikan role
+            'token'   => $token,
+        ], 201);
     }
 
     public function login(Request $request)
@@ -42,8 +46,11 @@ class AuthController extends Controller
         ]);
 
         $user = User::where('email', $credentials['email'])->first();
+
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
-            throw ValidationException::withMessages(['email' => ['Email atau password salah.']]);
+            throw ValidationException::withMessages([
+                'email' => ['Email atau password salah.'],
+            ]);
         }
 
         $token = $user->createToken('auth_token', [$user->role])->plainTextToken;
@@ -51,6 +58,7 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Login berhasil!',
             'user'    => $user,
+            'role'    => $user->role, // Mengembalikan role
             'token'   => $token,
         ]);
     }
@@ -58,6 +66,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
+
         return response()->json(['message' => 'Logout berhasil!']);
     }
 }
