@@ -40,6 +40,10 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime', 
     ];
 
+    public function hasRole(string $role): bool {
+        return $this->role === $role;
+    }
+
     public function tokens()
     {
         return $this->morphMany(PersonalAccessToken::class, 'tokenable');

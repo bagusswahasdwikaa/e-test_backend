@@ -13,61 +13,51 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        $data = $request->validate([
-            'firstName' => 'required|string|max:255',
-            'lastName'  => 'required|string|max:255',
-            'email'      => 'required|email|unique:users,email',
-            'password'   => 'required|string|min:8|confirmed',
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|string|email|unique:users',
+            'password' => 'required|string|min:6|confirmed',
         ]);
 
         $user = User::create([
-            'first_name' => $data['firstName'],
-            'last_name'  => $data['lastName'],
-            'email'      => $data['email'],
-            'password'   => Hash::make($data['password']),
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'email' => $validated['email'],
+            'password' => bcrypt($validated['password']),
+            'role' => 'user',
         ]);
 
-        return response()->json([
-            'message' => 'Registrasi berhasil!',
-            'user'    => $user,
-        ], 201);
+
+        $token = $user->createToken('auth_token',['user'])->plainTextToken;
+
+        return response()->json(['message'=>'Registrasi berhasil','user'=>$user,'token'=>$token], 201);
     }
 
     public function login(Request $request)
     {
         $credentials = $request->validate([
-            'email' => 'required|email',
+            'email'    => 'required|email',
             'password' => 'required',
         ]);
 
         $user = User::where('email', $credentials['email'])->first();
-
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['Email atau password salah.'],
-            ]);
+            throw ValidationException::withMessages(['email' => ['Email atau password salah.']]);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token = $user->createToken('auth_token', [$user->role])->plainTextToken;
 
         return response()->json([
             'message' => 'Login berhasil!',
-            'user' => $user,
-            'token' => $token,
+            'user'    => $user,
+            'token'   => $token,
         ]);
     }
 
     public function logout(Request $request)
     {
-        $token = $request->user()->currentAccessToken();
-
-        if ($token instanceof \Laravel\Sanctum\PersonalAccessToken) {
-            $token->delete();
-        }
-
-        return response()->json([
-            'message' => 'Logout berhasil!',
-        ]);
+        $request->user()->currentAccessToken()->delete();
+        return response()->json(['message' => 'Logout berhasil!']);
     }
-
 }

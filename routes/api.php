@@ -15,15 +15,14 @@ use App\Http\Controllers\RoleController;
 |
 */
 
-Route::post('/assign-role', [RoleController::class, 'assignRole']);
 
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login',    [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout']);
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout']);
-});
 
-Route::middleware('auth:sanctum')->get('/me', function (Request $request) {
-    return $request->user();
+Route::middleware(['auth:sanctum'])->group(function () {
+
+    Route::middleware('role:admin')->get('admin/dashboard', fn()=> response()->json(['message'=>'Welcome Admin']));
+    Route::middleware('role:user')->get('user/dashboard', fn()=> response()->json(['message'=>'Welcome User']));
 });

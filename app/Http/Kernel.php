@@ -59,6 +59,8 @@ class Kernel extends HttpKernel
      * Custom route middleware.
      */
     protected $routeMiddleware = [
-        'role' => \App\Http\Middleware\RoleAkun::class,
+        'role' => \App\Http\Middleware\RoleMiddleware::class,
+        'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
+        'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
     ];
 }
