@@ -9,7 +9,6 @@ use Laravel\Sanctum\HasApiTokens;
 use Laravel\Sanctum\PersonalAccessToken;
 use Spatie\Permission\Traits\HasRoles;
 
-
 class User extends Authenticatable
 {
     // Traits yang diperlukan
@@ -23,6 +22,7 @@ class User extends Authenticatable
         'last_name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -37,15 +37,42 @@ class User extends Authenticatable
      * Field tipe data yang perlu dirapikan secara otomatis
      */
     protected $casts = [
-        'email_verified_at' => 'datetime', 
+        'email_verified_at' => 'datetime',
     ];
 
-    public function hasRole(string $role): bool {
+    /**
+     * Accessor untuk menggabungkan first_name dan last_name menjadi full_name
+     */
+    public function getFullNameAttribute()
+    {
+        return trim($this->first_name . ' ' . $this->last_name);
+    }
+
+    /**
+     * Cek role user secara sederhana
+     */
+    public function hasRole(string $role): bool
+    {
         return $this->role === $role;
     }
 
+    /**
+     * Relasi ke PersonalAccessToken untuk Sanctum
+     */
     public function tokens()
     {
         return $this->morphMany(PersonalAccessToken::class, 'tokenable');
     }
+
+    /**
+     * Relasi ke daftar nilai peserta
+     */
+    public function daftarNilai()
+    {
+        return $this->hasMany(NilaiPeserta::class, 'user_id');
+    }
+
+    /**
+     * Relasi ke daftar ujian yang diikuti user
+     */
 }
