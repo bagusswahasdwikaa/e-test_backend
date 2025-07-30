@@ -40,7 +40,13 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        'api' => [
+            'driver' => 'token',   // Ini penting, pakai driver sanctum
+            'provider' => 'users',
+            'hash' => false,
+        ],
     ],
+
 
     /*
     |--------------------------------------------------------------------------

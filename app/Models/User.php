@@ -11,37 +11,55 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    // Traits yang diperlukan
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     /**
-     * Field yang dapat diisi secara massal
+     * Primary key bukan auto increment
+     */
+    public $incrementing = false;
+
+    /**
+     * Tipe primary key adalah integer
+     */
+    protected $keyType = 'int';
+
+    /**
+     * Primary key field (default 'id')
+     */
+    protected $primaryKey = 'id';
+
+    /**
+     * Field yang boleh diisi massal
      */
     protected $fillable = [
+        'id',          // penting untuk isi manual id
         'first_name',
         'last_name',
         'email',
         'password',
         'role',
+        'status',
+        'api_token',
     ];
 
     /**
-     * Field yang akan disembunyikan dari array JSON
+     * Field yang disembunyikan saat model diubah ke array / JSON
      */
     protected $hidden = [
-        'password',       // Melindungi kata sandi
-        'remember_token', // Token ingat pengguna
+        'password',
+        'remember_token',
+        'api_token',
     ];
 
     /**
-     * Field tipe data yang perlu dirapikan secara otomatis
+     * Casting tipe data otomatis
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
 
     /**
-     * Accessor untuk menggabungkan first_name dan last_name menjadi full_name
+     * Accessor untuk gabungkan first_name dan last_name menjadi full_name
      */
     public function getFullNameAttribute()
     {
@@ -57,7 +75,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Relasi ke PersonalAccessToken untuk Sanctum
+     * Relasi ke PersonalAccessToken (Sanctum)
      */
     public function tokens()
     {
@@ -72,7 +90,5 @@ class User extends Authenticatable
         return $this->hasMany(NilaiPeserta::class, 'user_id');
     }
 
-    /**
-     * Relasi ke daftar ujian yang diikuti user
-     */
+    // Tambahkan relasi lain jika ada
 }

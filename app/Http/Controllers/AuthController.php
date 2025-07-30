@@ -6,34 +6,37 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Auth;
-use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
     public function register(Request $request)
     {
         $validated = $request->validate([
+            'id'         => 'required|integer|unique:users,id',
             'first_name' => 'required|string|max:255',
             'last_name'  => 'required|string|max:255',
-            'email'      => 'required|string|email|unique:users',
+            'email'      => 'required|string|email|max:255|unique:users',
             'password'   => 'required|string|min:6|confirmed',
         ]);
 
+        $token = Str::random(80);
+
         $user = User::create([
+            'id'         => $validated['id'], // ID sebagai integer
             'first_name' => $validated['first_name'],
             'last_name'  => $validated['last_name'],
             'email'      => $validated['email'],
             'password'   => bcrypt($validated['password']),
             'role'       => 'user',
+            'api_token'  => $token,
+            'status'     => 'aktif',
         ]);
-
-        $token = $user->createToken('auth_token', ['user'])->plainTextToken;
 
         return response()->json([
             'message' => 'Registrasi berhasil',
             'user'    => $user,
-            'role'    => $user->role, // Mengembalikan role
+            'role'    => $user->role,
             'token'   => $token,
         ], 201);
     }
@@ -53,20 +56,23 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken('auth_token', [$user->role])->plainTextToken;
+        $user->api_token = Str::random(80);
+        $user->save();
 
         return response()->json([
-            'message' => 'Login berhasil!',
+            'message' => 'Login berhasil',
             'user'    => $user,
-            'role'    => $user->role, // Mengembalikan role
-            'token'   => $token,
+            'role'    => $user->role,
+            'token'   => $user->api_token,
         ]);
     }
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+        $user->api_token = null;
+        $user->save();
 
-        return response()->json(['message' => 'Logout berhasil!']);
+        return response()->json(['message' => 'Logout berhasil']);
     }
 }
