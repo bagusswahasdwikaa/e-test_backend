@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,14 +9,11 @@ class Jawaban extends Model
     use HasFactory;
 
     protected $fillable = [
-        'soal_id',
-        'jawaban',
-        'is_benar',
+        'soal_id', 'jawaban', 'is_correct'
     ];
 
     public function soal()
     {
-        return $this->belongsTo(Soal::class, 'soal_id');
+        return $this->belongsTo(Soal::class);
     }
 }
-

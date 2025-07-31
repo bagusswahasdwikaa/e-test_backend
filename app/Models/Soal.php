@@ -18,8 +18,9 @@ class Soal extends Model
 
     public function ujian()
     {
-        return $this->belongsTo(Ujian::class, 'ujian_id');
+        return $this->belongsTo(Ujian::class, 'ujian_id', 'id_ujian');
     }
+
 
     public function jawabans()
     {

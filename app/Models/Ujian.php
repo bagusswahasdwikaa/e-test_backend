@@ -25,4 +25,9 @@ class Ujian extends Model
     {
         return $this->hasMany(NilaiPeserta::class, 'ujian_id', 'id_ujian');
     }
+
+    public function soals()
+    {
+        return $this->hasMany(Soal::class, 'ujian_id', 'id_ujian');
+    }
 }

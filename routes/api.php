@@ -5,6 +5,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\NilaiPesertaController;
 use App\Http\Controllers\PesertaController;
+use App\Http\Controllers\UjianController;
+use App\Http\Controllers\SoalController;
+
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -18,3 +21,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/peserta/{id}/edit', [PesertaController::class, 'edit'])->name('peserta.edit');
     Route::delete('/peserta/{id}', [PesertaController::class, 'destroy'])->name('peserta.destroy');
 });
+
+
+Route::apiResource('ujians', UjianController::class);
+Route::post('/soals', [SoalController::class, 'store']);
+Route::post('/soals/bulk', [SoalController::class, 'storeBulk']);
