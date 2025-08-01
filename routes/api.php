@@ -24,5 +24,8 @@ Route::middleware('auth:api')->group(function () {
 
 
 Route::apiResource('ujians', UjianController::class);
+Route::get('/ujians', [UjianController::class, 'index']);
+
 Route::post('/soals', [SoalController::class, 'store']);
 Route::post('/soals/bulk', [SoalController::class, 'storeBulk']);
+Route::get('/soals/by-ujian/{ujian_id}', [SoalController::class, 'getByUjianId']);

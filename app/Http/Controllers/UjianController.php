@@ -8,27 +8,44 @@ use Illuminate\Http\JsonResponse;
 
 class UjianController extends Controller
 {
-    public function index(): JsonResponse
+    /**
+     * Tampilkan daftar semua ujian
+     */
+    public function index()
     {
+        // Mengambil semua data ujian, bisa ditambah filter/pagination jika diperlukan
         $ujians = Ujian::all();
-        return response()->json($ujians);
+
+        // Return response JSON
+        return response()->json([
+            'success' => true,
+            'data' => $ujians,
+        ]);
     }
 
     public function store(StoreUjianRequest $request): JsonResponse
     {
         $ujian = Ujian::create($request->validated());
+
         return response()->json([
             'message' => 'Ujian berhasil ditambahkan.',
             'data' => $ujian
         ], 201);
     }
 
+    /**
+     * Tampilkan detail ujian berdasarkan ID
+     */
     public function show($id): JsonResponse
     {
         $ujian = Ujian::findOrFail($id);
+
         return response()->json($ujian);
     }
 
+    /**
+     * Update data ujian berdasarkan ID
+     */
     public function update(StoreUjianRequest $request, $id): JsonResponse
     {
         $ujian = Ujian::findOrFail($id);
@@ -40,6 +57,9 @@ class UjianController extends Controller
         ]);
     }
 
+    /**
+     * Hapus ujian berdasarkan ID
+     */
     public function destroy($id): JsonResponse
     {
         $ujian = Ujian::findOrFail($id);

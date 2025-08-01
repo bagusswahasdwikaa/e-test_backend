@@ -79,4 +79,13 @@ class SoalController extends Controller
             'data' => $createdSoals,
         ], 201);
     }
+
+    public function getByUjianId($ujian_id)
+    {
+        $soals = Soal::with('jawabans')
+            ->where('ujian_id', $ujian_id)
+            ->get();
+
+        return response()->json($soals);
+    }
 }
