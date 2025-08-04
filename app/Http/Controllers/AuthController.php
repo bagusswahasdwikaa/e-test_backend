@@ -56,6 +56,14 @@ class AuthController extends Controller
             ]);
         }
 
+        // Cek status aktif
+        if ($user->status !== 'aktif') {
+            return response()->json([
+                'message' => 'Akun Anda non-aktif. Silakan hubungi admin.',
+            ], 403); // Forbidden
+        }
+
+        // Generate dan simpan token baru
         $user->api_token = Str::random(80);
         $user->save();
 
@@ -66,6 +74,7 @@ class AuthController extends Controller
             'token'   => $user->api_token,
         ]);
     }
+
 
     public function logout(Request $request)
     {

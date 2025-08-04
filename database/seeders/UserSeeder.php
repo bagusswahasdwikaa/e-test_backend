@@ -17,6 +17,7 @@ class UserSeeder extends Seeder
             'email' => 'adminPulu@gmail.com',
             'password' => Hash::make('admin123'),
             'role' => 'admin',
+            'status' => 'aktif',
             'api_token' => \Illuminate\Support\Str::random(60),
         ]);
 
@@ -27,6 +28,7 @@ class UserSeeder extends Seeder
             'email' => 'userZak@gmail.com',
             'password' => Hash::make('user123'),
             'role' => 'user',
+            'status'=> 'non aktif',
             'api_token' => \Illuminate\Support\Str::random(60),
         ]);
     }

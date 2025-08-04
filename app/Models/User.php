@@ -8,6 +8,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Sanctum\PersonalAccessToken;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Support\Str;  // jangan lupa import ini
 
 class User extends Authenticatable
 {
@@ -90,5 +91,14 @@ class User extends Authenticatable
         return $this->hasMany(NilaiPeserta::class, 'user_id');
     }
 
-    // Tambahkan relasi lain jika ada
+    // Event boot untuk generate api_token otomatis sebelum simpan user baru
+    protected static function booted()
+    {
+        static::creating(function ($user) {
+            if (empty($user->api_token)) {
+                // Generate string random 60 karakter
+                $user->api_token = Str::random(60);
+            }
+        });
+    }
 }
