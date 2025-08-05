@@ -15,7 +15,6 @@ return new class extends Migration
             $table->boolean('is_correct')->default(false);
             $table->timestamps();
 
-            // Foreign key ke tabel soals
             $table->foreign('soal_id')->references('id')->on('soals')->onDelete('cascade');
         });
     }

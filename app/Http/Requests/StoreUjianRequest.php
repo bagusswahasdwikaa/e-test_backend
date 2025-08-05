@@ -18,7 +18,7 @@ class StoreUjianRequest extends FormRequest
             'tanggal'      => 'required|date',
             'durasi'       => 'required|integer|min:1',
             'jumlah_soal'  => 'required|integer|min:1',
-            'nilai'        => 'nullable|numeric|min:0|max:100',
+            'nilai'        => 'sometimes|numeric|min:0|max:100',
             'kode_soal'    => 'required|string|max:255',
             'status'       => 'required|in:Aktif,Non Aktif',
         ];

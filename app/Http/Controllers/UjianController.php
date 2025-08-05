@@ -3,29 +3,29 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreUjianRequest;
+use App\Http\Requests\UpdateUjianRequest;
 use App\Models\Ujian;
 use Illuminate\Http\JsonResponse;
 
 class UjianController extends Controller
 {
-    /**
-     * Tampilkan daftar semua ujian
-     */
-    public function index()
+    // Ambil semua ujian
+    public function index(): JsonResponse
     {
-        // Mengambil semua data ujian, bisa ditambah filter/pagination jika diperlukan
         $ujians = Ujian::all();
-
-        // Return response JSON
-        return response()->json([
-            'success' => true,
-            'data' => $ujians,
-        ]);
+        return response()->json(['success' => true, 'data' => $ujians]);
     }
 
+    // Tambah ujian baru
     public function store(StoreUjianRequest $request): JsonResponse
     {
-        $ujian = Ujian::create($request->validated());
+        $data = $request->validated();
+
+        if (!isset($data['nilai'])) {
+            $data['nilai'] = 100;
+        }
+
+        $ujian = Ujian::create($data);
 
         return response()->json([
             'message' => 'Ujian berhasil ditambahkan.',
@@ -33,40 +33,38 @@ class UjianController extends Controller
         ], 201);
     }
 
-    /**
-     * Tampilkan detail ujian berdasarkan ID
-     */
+
+    // Tampilkan detail ujian berdasarkan id_ujian
     public function show($id): JsonResponse
     {
-        $ujian = Ujian::findOrFail($id);
-
+        $ujian = Ujian::where('id_ujian', $id)->firstOrFail();
         return response()->json($ujian);
     }
 
-    /**
-     * Update data ujian berdasarkan ID
-     */
-    public function update(StoreUjianRequest $request, $id): JsonResponse
+    // Update data ujian
+    public function update(UpdateUjianRequest $request, $id): JsonResponse
     {
-        $ujian = Ujian::findOrFail($id);
-        $ujian->update($request->validated());
+        $ujian = Ujian::where('id_ujian', $id)->firstOrFail();
+        $data = $request->validated();
+
+        if (!isset($data['nilai'])) {
+            $data['nilai'] = 100;
+        }
+
+        $ujian->update($data);
 
         return response()->json([
-            'message' => 'Ujian berhasil diperbarui.',
+            'message' => 'Data ujian berhasil diperbarui.',
             'data' => $ujian
         ]);
     }
 
-    /**
-     * Hapus ujian berdasarkan ID
-     */
+    // Hapus ujian
     public function destroy($id): JsonResponse
     {
-        $ujian = Ujian::findOrFail($id);
+        $ujian = Ujian::where('id_ujian', $id)->firstOrFail();
         $ujian->delete();
 
-        return response()->json([
-            'message' => 'Ujian berhasil dihapus.'
-        ]);
+        return response()->json(['message' => 'Ujian berhasil dihapus.']);
     }
 }
