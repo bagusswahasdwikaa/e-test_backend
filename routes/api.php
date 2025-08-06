@@ -21,6 +21,7 @@ Route::put('/ujians/{id}', [UjianController::class, 'update']);
 Route::apiResource('soals', SoalController::class)->except(['index']); // soals don't need index
 
 // Tambahan custom routes soal
+Route::apiResource('soals', SoalController::class)->except(['index']);
 Route::post('/soals/bulk', [SoalController::class, 'storeBulk']);
 Route::get('/soals/by-ujian/{ujian_id}', [SoalController::class, 'getByUjianId']);
 Route::get('/ujians/{ujian_id}/soals', [SoalController::class, 'getByUjianId']); // alias route

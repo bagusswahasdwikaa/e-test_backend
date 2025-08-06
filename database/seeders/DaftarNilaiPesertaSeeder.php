@@ -11,9 +11,9 @@ class DaftarNilaiPesertaSeeder extends Seeder
     {
         DB::table('daftar_nilai_peserta')->insert([
             [
-                'user_id' => 1,
-                'ujian_id' => 1,
-                'tanggal' => '2024-08-01',
+                'user_id' => 3,
+                'ujian_id' => 2,
+                'tanggal' => '2025-08-01',
                 'nilai' => 90,
                 'status' => 'Selesai',
                 'created_at' => now(),

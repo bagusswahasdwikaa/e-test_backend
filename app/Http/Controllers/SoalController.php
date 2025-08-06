@@ -161,12 +161,11 @@ class SoalController extends Controller
 
         $soal = Soal::findOrFail($id);
 
-        // Upload file baru jika ada
+        // Jika ada file media baru, hapus file lama dan simpan yang baru
         if ($request->hasFile('media_file')) {
             if ($soal->media_path) {
                 Storage::disk('public')->delete($soal->media_path);
             }
-
             $path = $request->file('media_file')->store('soal_media', 'public');
             $soal->media_path = $path;
         }
@@ -178,7 +177,7 @@ class SoalController extends Controller
         // Hapus jawaban lama
         $soal->jawabans()->delete();
 
-        // Tambah jawaban baru
+        // Simpan jawaban baru
         foreach ($request->jawabans as $jaw) {
             $soal->jawabans()->create([
                 'jawaban' => $jaw['jawaban'],
@@ -191,5 +190,4 @@ class SoalController extends Controller
             'data' => $soal->load('jawabans'),
         ]);
     }
-
 }
