@@ -1,8 +1,11 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\NilaiPeserta;
 use Illuminate\Http\Request;
+use App\Exports\NilaiPesertaExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class NilaiPesertaController extends Controller
 {
@@ -26,5 +29,11 @@ class NilaiPesertaController extends Controller
         });
 
         return response()->json($result);
+    }
+
+    // Method export ke Excel
+    public function export()
+    {
+        return Excel::download(new NilaiPesertaExport, 'nilai_peserta.xlsx');
     }
 }

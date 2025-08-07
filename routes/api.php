@@ -13,6 +13,7 @@ Route::post('/login', [AuthController::class, 'login']);
 
 // ========== NILAI ==========
 Route::get('/nilai-peserta', [NilaiPesertaController::class, 'index']);
+Route::get('/nilai-peserta/export', [NilaiPesertaController::class, 'export']);
 
 // ========== UJIAN ==========
 Route::apiResource('ujians', UjianController::class); // includes GET, POST, PUT, DELETE
