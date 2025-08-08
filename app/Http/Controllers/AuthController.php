@@ -7,6 +7,11 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password as PasswordRules;
+use Illuminate\Auth\Events\PasswordReset;
+
 
 class AuthController extends Controller
 {
@@ -83,5 +88,72 @@ class AuthController extends Controller
         $user->save();
 
         return response()->json(['message' => 'Logout berhasil']);
+    }
+
+      public function forgotPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => ['required', 'email', 'exists:users,email'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Kirim email reset password menggunakan Laravel
+        $status = Password::sendResetLink($request->only('email'));
+
+        if ($status === Password::RESET_LINK_SENT) {
+            return response()->json([
+                'message' => 'Link reset password telah dikirim ke email Anda.'
+            ], 200);
+        }
+
+        return response()->json([
+            'message' => 'Gagal mengirim link reset password.'
+        ], 500);
+    }
+
+    /**
+     * Reset password dengan token dan email
+     */
+    public function resetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'token' => ['required'],
+            'email' => ['required', 'email', 'exists:users,email'],
+            'password' => ['required', 'confirmed', PasswordRules::min(8)],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user, $password) {
+                $user->password = bcrypt($password);
+                $user->setRememberToken(Str::random(60));
+                $user->save();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        if ($status === Password::PASSWORD_RESET) {
+            return response()->json([
+                'message' => 'Password berhasil direset.'
+            ], 200);
+        }
+
+        return response()->json([
+            'message' => 'Gagal mereset password, token tidak valid atau sudah kedaluwarsa.'
+        ], 400);
     }
 }

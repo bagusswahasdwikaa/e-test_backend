@@ -8,7 +8,8 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Sanctum\PersonalAccessToken;
 use Spatie\Permission\Traits\HasRoles;
-use Illuminate\Support\Str;  // jangan lupa import ini
+use Illuminate\Support\Str; 
+use App\Notifications\ResetPasswordNotification;
 
 class User extends Authenticatable
 {
@@ -100,5 +101,10 @@ class User extends Authenticatable
                 $user->api_token = Str::random(60);
             }
         });
+    }
+
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 }
