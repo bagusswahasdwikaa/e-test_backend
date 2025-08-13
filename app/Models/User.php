@@ -41,7 +41,9 @@ class User extends Authenticatable
         'password',
         'role',
         'status',
+        'bio', 
         'api_token',
+        'photo_url',
     ];
 
     /**
