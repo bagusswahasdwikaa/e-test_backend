@@ -86,4 +86,34 @@ class ProfileController extends Controller
             'photo_url' => $user->photo_url,
         ]);
     }
+    
+    public function deletePhoto(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user->photo_url) {
+            return response()->json([
+                'message' => 'Tidak ada foto profil untuk dihapus.',
+            ], 404);
+        }
+
+        // Ambil path file dari URL, contoh: https://yourdomain.com/storage/profile_photos/namafile.png
+        $storagePath = parse_url($user->photo_url, PHP_URL_PATH); // /storage/profile_photos/namafile.png
+
+        // Konversi ke path relatif dari disk 'public'
+        $relativePath = str_replace('/storage/', '', $storagePath); // profile_photos/namafile.png
+
+        // Cek apakah file ada dan hapus
+        if (Storage::disk('public')->exists($relativePath)) {
+            Storage::disk('public')->delete($relativePath);
+        }
+
+        // Kosongkan photo_url di database
+        $user->photo_url = null;
+        $user->save();
+
+        return response()->json([
+            'message' => 'Foto profil berhasil dihapus.',
+        ]);
+    }
 }

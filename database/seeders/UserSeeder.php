@@ -42,5 +42,16 @@ class UserSeeder extends Seeder
             'status'=> 'aktif',
             'api_token' => \Illuminate\Support\Str::random(60),
         ]);
+
+        User::create([
+            'id' => 1000,
+            'first_name' => 'Rando',
+            'last_name' => 'Mustofa',
+            'email' => 'lockcaps911@gmail.com',
+            'password' => Hash::make('P4nasonic'),
+            'role' => 'admin',
+            'status'=> 'aktif',
+            'api_token' => \Illuminate\Support\Str::random(60),
+        ]);
     }
 }

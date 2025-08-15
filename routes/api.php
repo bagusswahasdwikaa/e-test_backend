@@ -39,6 +39,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/peserta', [PesertaController::class, 'index'])->name('peserta.index');
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile/update', [ProfileController::class, 'update']);
+    Route::delete('/profile/photo', [ProfileController::class, 'deletePhoto']);
 });
 
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);

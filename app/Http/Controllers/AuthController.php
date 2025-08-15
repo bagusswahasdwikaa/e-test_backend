@@ -90,30 +90,35 @@ class AuthController extends Controller
         return response()->json(['message' => 'Logout berhasil']);
     }
 
-      public function forgotPassword(Request $request)
+    public function forgotPassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'email' => ['required', 'email', 'exists:users,email'],
+        ], [
+            'email.exists' => 'Email tidak terdaftar.',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validasi gagal',
+                'message' => 'Validasi gagal.',
                 'errors' => $validator->errors(),
             ], 422);
         }
 
-        // Kirim email reset password menggunakan Laravel
-        $status = Password::sendResetLink($request->only('email'));
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
 
         if ($status === Password::RESET_LINK_SENT) {
             return response()->json([
-                'message' => 'Link reset password telah dikirim ke email Anda.'
+                'message' => 'Link reset password telah dikirim ke email Anda.',
+                'status' => __($status),
             ], 200);
         }
 
         return response()->json([
-            'message' => 'Gagal mengirim link reset password.'
+            'message' => 'Gagal mengirim link reset password.',
+            'status' => __($status) ?? $status,
         ], 500);
     }
 
@@ -123,14 +128,17 @@ class AuthController extends Controller
     public function resetPassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'token' => ['required'],
-            'email' => ['required', 'email', 'exists:users,email'],
+            'token'    => ['required'],
+            'email'    => ['required', 'email', 'exists:users,email'],
             'password' => ['required', 'confirmed', PasswordRules::min(8)],
+        ], [
+            'email.exists' => 'Email tidak terdaftar.',
+            'password.confirmed' => 'Konfirmasi password tidak cocok.',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validasi gagal',
+                'message' => 'Validasi gagal.',
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -148,12 +156,14 @@ class AuthController extends Controller
 
         if ($status === Password::PASSWORD_RESET) {
             return response()->json([
-                'message' => 'Password berhasil direset.'
+                'message' => 'Password berhasil direset.',
+                'status' => __($status),
             ], 200);
         }
 
         return response()->json([
-            'message' => 'Gagal mereset password, token tidak valid atau sudah kedaluwarsa.'
+            'message' => 'Gagal mereset password. Token tidak valid atau sudah kedaluwarsa.',
+            'status' => __($status) ?? $status,
         ], 400);
     }
 }
