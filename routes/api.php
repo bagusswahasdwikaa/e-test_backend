@@ -44,3 +44,4 @@ Route::middleware('auth:api')->group(function () {
 
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::apiResource('peserta', PesertaController::class);
