@@ -49,7 +49,7 @@ class PesertaController extends Controller
             'last_name'  => 'required|string|max:100',
             'email'      => 'required|email|unique:users,email',
             'password'   => 'required|string|confirmed|min:6',
-            'status'     => ['required', Rule::in(['aktif', 'non-aktif'])],
+            'status'     => ['required', Rule::in(['aktif', 'non aktif'])],
             'bio'        => 'nullable|string',
             'photo_url'  => 'nullable|url',
         ]);
@@ -112,7 +112,7 @@ class PesertaController extends Controller
                     Rule::unique('users')->ignore($user->id),
                 ],
                 'password'   => 'sometimes|nullable|string|confirmed|min:6',
-                'status'     => ['sometimes', 'required', Rule::in(['aktif', 'non-aktif'])],
+                'status'     => ['sometimes', 'required', Rule::in(['aktif', 'non aktif'])],
                 'bio'        => 'nullable|string',
                 'photo_url'  => 'nullable|url',
             ]);

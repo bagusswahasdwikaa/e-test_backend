@@ -7,6 +7,7 @@ use App\Http\Controllers\NilaiPesertaController;
 use App\Http\Controllers\UjianController;
 use App\Http\Controllers\SoalController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\EmailController;
 
 // ========== AUTH ==========
 Route::post('/register', [AuthController::class, 'register']);
@@ -45,3 +46,4 @@ Route::middleware('auth:api')->group(function () {
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::apiResource('peserta', PesertaController::class);
+Route::post('/kirim-ujian-email', [EmailController::class, 'send']);
