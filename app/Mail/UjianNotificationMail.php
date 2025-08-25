@@ -25,7 +25,7 @@ class UjianNotificationMail extends Mailable
 
     public function build()
     {
-        return $this->from('sediesereal@gmail.com', 'E-TEST P')
+        return $this->from('lockcaps911@gmail.com', 'E-TEST P')
                     ->subject('Undangan Ujian: ' . $this->namaUjian)
                     ->view('emails.ujian-notifikasi');
     }

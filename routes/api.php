@@ -9,41 +9,55 @@ use App\Http\Controllers\SoalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\EmailController;
 
-// ========== AUTH ==========
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+| Semua endpoint yang digunakan oleh aplikasi.
+| Terdiri dari autentikasi, ujian, soal, peserta, profil, dan email.
+*/
+
+// ==================== AUTH ====================
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
-// ========== NILAI ==========
+// ==================== NILAI PESERTA ====================
 Route::get('/nilai-peserta', [NilaiPesertaController::class, 'index']);
 Route::get('/nilai-peserta/export', [NilaiPesertaController::class, 'export']);
 
-// ========== UJIAN ==========
-Route::apiResource('ujians', UjianController::class); // includes GET, POST, PUT, DELETE
-Route::put('/ujians/{id}', [UjianController::class, 'update']);
-// ========== SOAL ==========
-Route::apiResource('soals', SoalController::class)->except(['index']); // soals don't need index
+// ==================== UJIAN ====================
+// CRUD Ujian (index, store, show, update, destroy)
+Route::get('/ujians', [UjianController::class, 'index']);       // daftar semua ujian
+Route::post('/ujians', [UjianController::class, 'store']);      // tambah ujian baru
+Route::get('/ujians/{id}', [UjianController::class, 'show']);   // detail ujian by ID
+Route::put('/ujians/{id}', [UjianController::class, 'update']); // update ujian
+Route::delete('/ujians/{id}', [UjianController::class, 'destroy']); // hapus ujian
 
-// Tambahan custom routes soal
+// Alias tambahan untuk endpoint daftar ujian
+Route::get('/daftar-ujian', [UjianController::class, 'index'])->name('ujians.list');
+
+// ==================== SOAL ====================
+// CRUD Soal (tanpa index, karena ada route khusus by ujian)
 Route::apiResource('soals', SoalController::class)->except(['index']);
-Route::post('/soals/bulk', [SoalController::class, 'storeBulk']);
-Route::get('/soals/by-ujian/{ujian_id}', [SoalController::class, 'getByUjianId']);
-Route::get('/ujians/{ujian_id}/soals', [SoalController::class, 'getByUjianId']); // alias route
 
-// ========== PESERTA ==========
-Route::post('/peserta', [PesertaController::class, 'store'])->name('peserta.store');
-Route::get('/peserta/{id}', [PesertaController::class, 'show'])->name('peserta.show');
+// Custom routes soal berdasarkan ujian
+Route::post('/soals/bulk', [SoalController::class, 'storeBulk']);            // Tambah soal banyak sekaligus
+Route::get('/soals/by-ujian/{ujian_id}', [SoalController::class, 'getByUjianId']); // Ambil soal per ujian (alias 1)
+Route::get('/ujians/{ujian_id}/soals', [SoalController::class, 'getByUjianId']);   // Ambil soal per ujian (alias 2, lebih natural)
+
+// ==================== PESERTA ====================
+Route::apiResource('peserta', PesertaController::class);
 Route::get('/peserta/{id}/edit', [PesertaController::class, 'edit'])->name('peserta.edit');
-Route::delete('/peserta/{id}', [PesertaController::class, 'destroy'])->name('peserta.destroy');
 
+// ==================== PROFILE (Login Diperlukan) ====================
 Route::middleware('auth:api')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/peserta', [PesertaController::class, 'index'])->name('peserta.index');
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile/update', [ProfileController::class, 'update']);
     Route::delete('/profile/photo', [ProfileController::class, 'deletePhoto']);
 });
 
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
-Route::apiResource('peserta', PesertaController::class);
+// ==================== EMAIL ====================
 Route::post('/kirim-ujian-email', [EmailController::class, 'send']);

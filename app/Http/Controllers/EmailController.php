@@ -14,41 +14,54 @@ class EmailController extends Controller
     {
         // Validasi data request
         $validator = Validator::make($request->all(), [
-            'emails' => 'required|array',
-            'emails.*' => 'email',
-            'nama_ujian' => 'required|string',
-            'tanggal' => 'required|string',
-            'kode_soal' => 'required|string',
+            'emails'       => 'required|array|min:1',
+            'emails.*'     => 'required|email',
+            'nama_ujian'   => 'required|string',
+            'tanggal_mulai'=> 'required|date',
+            'tanggal_akhir'=> 'required|date|after_or_equal:tanggal_mulai',
+            'kode_soal'    => 'required|string',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Data tidak valid',
-                'errors' => $validator->errors()
+                'errors'  => $validator->errors()
             ], 422);
         }
 
-        // Loop setiap email dan kirimkan email notifikasi
-        foreach ($request->emails as $email) {
-            // Ambil user dari database berdasarkan email
+        $emails       = $request->emails;
+        $namaUjian    = $request->nama_ujian;
+        $tanggalMulai = $request->tanggal_mulai;
+        $tanggalAkhir = $request->tanggal_akhir;
+        $kodeSoal     = $request->kode_soal;
+
+        // Ambil email yang benar-benar ada di database
+        $registeredEmails = User::whereIn('email', $emails)->pluck('email')->toArray();
+        $notFound         = array_diff($emails, $registeredEmails);
+
+        // Jika ada email tidak terdaftar → return error 422
+        if (count($notFound) > 0) {
+            return response()->json([
+                'message' => 'Email berikut tidak terdaftar: ' . implode(', ', $notFound)
+            ], 422);
+        }
+
+        // Kirim email ke semua peserta terdaftar
+        foreach ($registeredEmails as $email) {
             $user = User::where('email', $email)->first();
+            $namaPeserta = $user->full_name ?? $user->name ?? 'Peserta';
 
-            // Jika user tidak ditemukan, lanjut ke email berikutnya
-            if (!$user) {
-                continue;
-            }
-
-            $namaPeserta = $user->full_name ?? 'Peserta';
-
-            // Kirim email
             Mail::to($email)->send(new UjianNotificationMail(
                 $namaPeserta,
-                $request->nama_ujian,
-                $request->tanggal,
-                $request->kode_soal
+                $namaUjian,
+                $tanggalMulai,
+                $tanggalAkhir,
+                $kodeSoal
             ));
         }
 
-        return response()->json(['message' => 'Email berhasil dikirim']);
+        return response()->json([
+            'message' => 'Email berhasil dikirim ke semua peserta terdaftar'
+        ]);
     }
 }
