@@ -92,7 +92,6 @@ class UjianController extends Controller
 
         $ujian->fill($data);
 
-        // Status dihitung otomatis
         $ujian->status = $this->tentukanStatus($ujian->tanggal_mulai, $ujian->tanggal_akhir);
 
         $ujian->save();

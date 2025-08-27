@@ -5,16 +5,26 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Ujian extends Model
 {
     use HasFactory;
 
-    // Pakai nama tabel sesuai migrasi
+    /**
+     * Nama tabel sesuai migrasi
+     */
     protected $table = 'ujians';
 
+    /**
+     * Primary key
+     */
     protected $primaryKey = 'id_ujian';
 
+    /**
+     * Field yang bisa diisi massal
+     */
     protected $fillable = [
         'nama_ujian',
         'kode_soal',
@@ -26,20 +36,36 @@ class Ujian extends Model
         'nilai',
     ];
 
-    // Relasi ke NilaiPeserta
-    public function nilaiPeserta()
+    /**
+     * Tambahkan atribut status ke JSON response
+     */
+    protected $appends = ['status'];
+
+    /**
+     * Relasi ke nilai peserta
+     */
+    public function nilaiPeserta(): HasMany
     {
         return $this->hasMany(NilaiPeserta::class, 'ujian_id', 'id_ujian');
     }
 
-    // Relasi ke Soal
-    public function soals()
+    /**
+     * Relasi ke soal
+     */
+    public function soals(): HasMany
     {
         return $this->hasMany(Soal::class, 'ujian_id', 'id_ujian');
     }
 
-    // Supaya field "status" otomatis ikut di JSON
-    protected $appends = ['status'];
+    /**
+     * Relasi ke user yang mengikuti ujian
+     */
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'ujian_users', 'ujian_id', 'user_id')
+            ->withPivot('status', 'nilai', 'jawaban')
+            ->withTimestamps();
+    }
 
     /**
      * Accessor untuk atribut status
@@ -48,7 +74,6 @@ class Ujian extends Model
     {
         $tz = config('app.timezone', 'Asia/Jakarta');
 
-        // Jika salah satu tanggal kosong, default Non Aktif
         if (!$this->tanggal_mulai || !$this->tanggal_akhir) {
             return 'Non Aktif';
         }
