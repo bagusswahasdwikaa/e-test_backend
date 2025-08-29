@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AssignUjianRequest;
 use App\Http\Requests\StoreUjianRequest;
 use App\Http\Requests\UpdateUjianRequest;
 use App\Models\Ujian;
@@ -127,5 +128,39 @@ class UjianController extends Controller
         $akhir = Carbon::parse($tanggalAkhir, $tz);
 
         return $now->between($mulai, $akhir) ? 'Aktif' : 'Non Aktif';
+    }
+
+    public function assignToUsers(AssignUjianRequest $request, $ujianId): JsonResponse
+    {
+        $ujian = Ujian::findOrFail($ujianId);
+
+        $userIds = $request->validated()['user_ids'];
+
+        // Simpan ke tabel pivot ujian_users
+        $ujian->users()->syncWithoutDetaching($userIds);
+
+        return response()->json([
+            'message' => 'Ujian berhasil dibagikan ke user.',
+            'ujian_id' => $ujian->id_ujian,
+            'assigned_users' => $userIds,
+        ], 200);
+    }
+
+    public function assignedUsers($ujianId): JsonResponse
+    {
+        $ujian = Ujian::with('users')->findOrFail($ujianId);
+
+        return response()->json([
+            'ujian' => $ujian->nama_ujian,
+            'assigned_users' => $ujian->users->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->full_name,
+                    'email' => $user->email,
+                    'status' => $user->pivot->status,
+                    'nilai' => $user->pivot->nilai,
+                ];
+            }),
+        ]);
     }
 }

@@ -17,30 +17,27 @@ class UserUjianController extends Controller
     /**
      * Menampilkan daftar ujian yang tersedia untuk user login.
      */
-    public function index(): JsonResponse
+    public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = $request->user();
 
-        // Ambil ujian yang dikirim ke user login melalui tabel ujian_users
-        $ujians = Ujian::whereHas('users', function ($q) use ($user) {
-            $q->where('user_id', $user->id);
-        })->get();
-
-        // Mapping data supaya konsisten dengan frontend
-        $data = $ujians->map(function ($ujian) {
-            return [
-                'ujian_id'    => $ujian->id, // gunakan primary key standar
-                'nama_ujian'  => $ujian->nama,
-                'durasi'      => (int) $ujian->durasi,
-                'jumlah_soal' => (int) $ujian->jumlah_soal,
-                'status'      => $this->tentukanStatus($ujian->tanggal_mulai, $ujian->tanggal_akhir),
-                'kode_soal'   => $ujian->kode_soal,
-            ];
-        });
+        $ujians = $user->ujians()->with('soals')->get();
 
         return response()->json([
-            'success' => true,
-            'data'    => $data,
+            'data' => $ujians->map(function ($ujian) {
+                return [
+                    'ujian_id' => $ujian->id_ujian,
+                    'status' => $ujian->pivot->status,
+                    'nilai' => $ujian->pivot->nilai,
+                    'ujian' => [
+                        'id' => $ujian->id_ujian,
+                        'nama' => $ujian->nama_ujian,
+                        'durasi' => $ujian->durasi,
+                        'jumlah_soal' => $ujian->jumlah_soal,
+                        'kode_soal' => $ujian->kode_soal,
+                    ],
+                ];
+            }),
         ]);
     }
 
