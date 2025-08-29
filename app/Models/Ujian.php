@@ -63,7 +63,7 @@ class Ujian extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'ujian_users', 'ujian_id', 'user_id')
-            ->withPivot('status', 'nilai', 'jawaban')
+            ->withPivot( 'nilai', 'jawaban')
             ->withTimestamps();
     }
 

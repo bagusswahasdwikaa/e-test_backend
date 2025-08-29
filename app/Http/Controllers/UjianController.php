@@ -6,7 +6,9 @@ use App\Http\Requests\AssignUjianRequest;
 use App\Http\Requests\StoreUjianRequest;
 use App\Http\Requests\UpdateUjianRequest;
 use App\Models\Ujian;
+use App\Mail\UjianAssignedNotification;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 
 class UjianController extends Controller
@@ -139,28 +141,51 @@ class UjianController extends Controller
         // Simpan ke tabel pivot ujian_users
         $ujian->users()->syncWithoutDetaching($userIds);
 
+        // Kirim email ke setiap user
+        $users = $ujian->users()->whereIn('users.id', $userIds)->get();
+
+        foreach ($users as $user) {
+            Mail::to($user->email)->send(new UjianAssignedNotification($ujian));
+        }
+
         return response()->json([
-            'message' => 'Ujian berhasil dibagikan ke user.',
+            'message' => 'Ujian berhasil dibagikan ke user dan notifikasi email telah dikirim.',
             'ujian_id' => $ujian->id_ujian,
             'assigned_users' => $userIds,
         ], 200);
     }
-
     public function assignedUsers($ujianId): JsonResponse
     {
-        $ujian = Ujian::with('users')->findOrFail($ujianId);
+        $ujian = Ujian::with(['users' => function($query) {
+            // Optional: hanya ambil users dengan role 'user' dan status aktif
+            $query->where('role', 'user')
+                ->where('status', 'aktif');
+        }])->findOrFail($ujianId);
+
+        // Hitung status ujian berdasarkan tanggal mulai dan tanggal akhir
+        $ujian->status = $this->tentukanStatus($ujian->tanggal_mulai, $ujian->tanggal_akhir);
+
+        // Format data assigned users dengan detail tambahan jika diperlukan
+        $assignedUsers = $ujian->users->map(function ($user) {
+            return [
+                'id'       => $user->id,
+                'name'     => $user->full_name,
+                'email'    => $user->email,
+                'status'   => $user->status,   // misal untuk info aktif/non aktif
+                'nilai'    => $user->pivot->nilai ?? null, // nilai bisa null jika belum ada
+                'ditugaskan_pada' => $user->pivot->created_at ? $user->pivot->created_at->toDateTimeString() : null,
+            ];
+        });
 
         return response()->json([
-            'ujian' => $ujian->nama_ujian,
-            'assigned_users' => $ujian->users->map(function ($user) {
-                return [
-                    'id' => $user->id,
-                    'name' => $user->full_name,
-                    'email' => $user->email,
-                    'status' => $user->pivot->status,
-                    'nilai' => $user->pivot->nilai,
-                ];
-            }),
+            'ujian' => [
+                'id'     => $ujian->id_ujian,
+                'nama'   => $ujian->nama_ujian,
+                'status' => $ujian->status,
+                'tanggal_mulai' => $ujian->tanggal_mulai,
+                'tanggal_akhir' => $ujian->tanggal_akhir,
+            ],
+            'assigned_users' => $assignedUsers,
         ]);
     }
 }

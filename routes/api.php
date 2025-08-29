@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ListPesertaController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PesertaController;
@@ -7,7 +8,6 @@ use App\Http\Controllers\NilaiPesertaController;
 use App\Http\Controllers\UjianController;
 use App\Http\Controllers\SoalController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\EmailController;
 use App\Http\Controllers\UserUjianController;
 
 /*
@@ -61,6 +61,7 @@ Route::apiResource('soals', SoalController::class)->except(['index']);
 // =========================
 Route::apiResource('peserta', PesertaController::class);
 Route::get('/peserta/{id}/edit', [PesertaController::class, 'edit'])->name('peserta.edit');
+Route::apiResource('list-peserta', ListPesertaController::class);
 
 // =========================
 // NILAI PESERTA
@@ -94,7 +95,3 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/admin/ujians/{idUjian}/kirim/{userId}', [UserUjianController::class, 'kirimEmail']);
 });
 
-// =========================
-// EMAIL (opsional / manual)
-// =========================
-Route::post('/kirim-ujian-email', [EmailController::class, 'send']);

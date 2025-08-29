@@ -104,7 +104,7 @@ class User extends Authenticatable
     public function ujians(): BelongsToMany
     {
         return $this->belongsToMany(Ujian::class, 'ujian_users', 'user_id', 'ujian_id')
-            ->withPivot('status', 'nilai', 'jawaban')
+            ->withPivot('nilai', 'jawaban')
             ->withTimestamps();
     }
 

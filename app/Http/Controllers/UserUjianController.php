@@ -9,7 +9,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-use Carbon\Carbon;
 use App\Mail\UjianNotificationMail;
 
 class UserUjianController extends Controller
@@ -17,7 +16,7 @@ class UserUjianController extends Controller
     /**
      * Menampilkan daftar ujian yang tersedia untuk user login.
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         $user = $request->user();
 
@@ -27,7 +26,6 @@ class UserUjianController extends Controller
             'data' => $ujians->map(function ($ujian) {
                 return [
                     'ujian_id' => $ujian->id_ujian,
-                    'status' => $ujian->pivot->status,
                     'nilai' => $ujian->pivot->nilai,
                     'ujian' => [
                         'id' => $ujian->id_ujian,
@@ -35,6 +33,7 @@ class UserUjianController extends Controller
                         'durasi' => $ujian->durasi,
                         'jumlah_soal' => $ujian->jumlah_soal,
                         'kode_soal' => $ujian->kode_soal,
+                        'status' => $ujian->status, 
                     ],
                 ];
             }),
@@ -48,13 +47,11 @@ class UserUjianController extends Controller
     {
         $user = Auth::user();
 
-        $ujian = Ujian::where('id', $id)
+        $ujian = Ujian::where('id_ujian', $id)
             ->whereHas('users', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
             ->firstOrFail();
-
-        $ujian->status = $this->tentukanStatus($ujian->tanggal_mulai, $ujian->tanggal_akhir);
 
         return response()->json([
             'success' => true,
@@ -69,15 +66,13 @@ class UserUjianController extends Controller
     {
         $user = Auth::user();
 
-        $ujian = Ujian::where('id', $id)
+        $ujian = Ujian::where('id_ujian', $id)
             ->whereHas('users', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
             ->firstOrFail();
 
-        $status = $this->tentukanStatus($ujian->tanggal_mulai, $ujian->tanggal_akhir);
-
-        if ($status !== 'Aktif') {
+        if ($ujian->status !== 'Aktif') {
             return response()->json([
                 'success' => false,
                 'message' => 'Ujian tidak aktif atau sudah berakhir.',
@@ -86,7 +81,7 @@ class UserUjianController extends Controller
 
         // Buat entri ujian_users jika belum ada
         UjianUser::firstOrCreate(
-            ['user_id' => $user->id, 'ujian_id' => $ujian->id],
+            ['user_id' => $user->id, 'ujian_id' => $ujian->id_ujian],
             ['jawaban' => json_encode([])]
         );
 
@@ -119,47 +114,5 @@ class UserUjianController extends Controller
             'success' => true,
             'message' => 'Jawaban berhasil disimpan.',
         ]);
-    }
-
-    /**
-     * Admin kirim undangan ujian ke user via email.
-     */
-    public function kirimEmail($idUjian, $userId): JsonResponse
-    {
-        $ujian = Ujian::findOrFail($idUjian);
-        $user  = User::findOrFail($userId);
-
-        // Simpan relasi ujian <-> user di tabel pivot ujian_users
-        UjianUser::firstOrCreate([
-            'ujian_id' => $ujian->id,
-            'user_id'  => $user->id,
-        ]);
-
-        // Kirim email ke user
-        Mail::to($user->email)->send(new UjianNotificationMail(
-            $user->name,
-            $ujian->nama,
-            $ujian->tanggal_mulai,
-            $ujian->tanggal_akhir,
-            $ujian->kode_soal ?? '-'
-        ));
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Undangan ujian berhasil dikirim ke ' . $user->email,
-        ]);
-    }
-
-    /**
-     * Tentukan status ujian (Aktif / Non Aktif).
-     */
-    private function tentukanStatus($tanggalMulai, $tanggalAkhir): string
-    {
-        $tz    = config('app.timezone', 'Asia/Jakarta');
-        $now   = Carbon::now($tz);
-        $mulai = Carbon::parse($tanggalMulai, $tz);
-        $akhir = Carbon::parse($tanggalAkhir, $tz);
-
-        return $now->between($mulai, $akhir) ? 'Aktif' : 'Non Aktif';
     }
 }
