@@ -43,9 +43,6 @@ class UjianController extends Controller
         $data['tanggal_mulai'] = Carbon::parse($data['tanggal_mulai'])->timezone($tz)->format('Y-m-d H:i:s');
         $data['tanggal_akhir'] = Carbon::parse($data['tanggal_akhir'])->timezone($tz)->format('Y-m-d H:i:s');
 
-        // Default nilai
-        $data['nilai'] = $data['nilai'] ?? 100;
-
         // Status dihitung otomatis
         $data['status'] = $this->tentukanStatus($data['tanggal_mulai'], $data['tanggal_akhir']);
 
@@ -172,7 +169,6 @@ class UjianController extends Controller
                 'name'     => $user->full_name,
                 'email'    => $user->email,
                 'status'   => $user->status,   // misal untuk info aktif/non aktif
-                'nilai'    => $user->pivot->nilai ?? null, // nilai bisa null jika belum ada
                 'ditugaskan_pada' => $user->pivot->created_at ? $user->pivot->created_at->toDateTimeString() : null,
             ];
         });

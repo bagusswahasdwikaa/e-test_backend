@@ -1,14 +1,15 @@
 <?php
 
-use App\Http\Controllers\ListPesertaController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PesertaController;
+use App\Http\Controllers\ListPesertaController;
 use App\Http\Controllers\NilaiPesertaController;
 use App\Http\Controllers\UjianController;
 use App\Http\Controllers\SoalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserUjianController;
+use App\Http\Controllers\HasilUjianController;
 
 /*
 |--------------------------------------------------------------------------
@@ -44,15 +45,15 @@ Route::prefix('ujians')->group(function () {
     Route::get('{ujian_id}/soals', [SoalController::class, 'getByUjianId']);
 });
 
-// Optional alias
+// Alias opsional untuk frontend
 Route::get('/daftar-ujian', [UjianController::class, 'index'])->name('ujians.list');
 
 // =========================
 // SOAL
 // =========================
 Route::prefix('soals')->group(function () {
-    Route::post('bulk', [SoalController::class, 'storeBulk']);                  // Import soal massal
-    Route::get('by-ujian/{ujian_id}', [SoalController::class, 'getByUjianId']); // Ambil soal by ujian
+    Route::post('bulk', [SoalController::class, 'storeBulk']);                    // Import soal massal
+    Route::get('by-ujian/{ujian_id}', [SoalController::class, 'getByUjianId']);   // Ambil soal by ujian
 });
 Route::apiResource('soals', SoalController::class)->except(['index']);
 
@@ -72,26 +73,31 @@ Route::prefix('nilai-peserta')->group(function () {
 });
 
 // =========================
-// PROFILE (Auth: Required)
+// PROFILE (Auth Required)
 // =========================
 Route::middleware('auth:api')->group(function () {
-    // Logout
+    // === AUTH ===
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Profile
+    // === PROFILE ===
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile/update', [ProfileController::class, 'update']);
     Route::delete('/profile/photo', [ProfileController::class, 'deletePhoto']);
 
-    // Ujian untuk user
+    // =========================
+    // USER UJIAN (Peserta)
+    // =========================
     Route::prefix('user/ujians')->group(function () {
-        Route::get('/', [UserUjianController::class, 'index']);                    // Daftar ujian user
-        Route::get('{id}', [UserUjianController::class, 'show']);                 // Detail ujian
-        Route::post('{id}/kerjakan', [UserUjianController::class, 'kerjakan']);   // Mulai ujian
-        Route::post('{id}/jawaban', [UserUjianController::class, 'simpanJawaban']); // Kirim jawaban
+        Route::get('/', [UserUjianController::class, 'index']);                       // Daftar ujian yang di-assign
+        Route::get('{id}', [UserUjianController::class, 'show']);                    // Detail ujian peserta
+        Route::post('{id}/kerjakan', [UserUjianController::class, 'kerjakan']);
+        Route::get('{id}/soal', [UserUjianController::class, 'getSoalUjian']);      // Mulai ujian (dengan kode_soal)
+        Route::post('{id}/jawaban', [UserUjianController::class, 'simpanJawaban']);  // Kirim/simpan jawaban
+        Route::post('{id}/submit', [UserUjianController::class, 'submitUjian']);
     });
 
-    // Admin kirim ujian lewat email
+    Route::get('/hasil-ujian', [HasilUjianController::class, 'index'])->middleware('auth');
+
+    // === ADMIN Kirim email ke peserta ===
     Route::post('/admin/ujians/{idUjian}/kirim/{userId}', [UserUjianController::class, 'kirimEmail']);
 });
-

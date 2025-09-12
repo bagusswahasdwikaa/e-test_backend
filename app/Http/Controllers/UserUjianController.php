@@ -3,16 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ujian;
-use App\Models\User;
 use App\Models\UjianUser;
+use App\Models\Soal;
+use App\Models\HasilUjian;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\UjianNotificationMail;
+use Illuminate\Validation\ValidationException;
 
 class UserUjianController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth:api');
+    }
+
     /**
      * Menampilkan daftar ujian yang tersedia untuk user login.
      */
@@ -27,22 +32,20 @@ class UserUjianController extends Controller
                 return [
                     'ujian_id' => $ujian->id_ujian,
                     'nilai' => $ujian->pivot->nilai,
+                    'status_peserta' => $ujian->pivot->is_submitted ? 'Sudah Dikerjakan' : 'Belum Dikerjakan',
                     'ujian' => [
                         'id' => $ujian->id_ujian,
                         'nama' => $ujian->nama_ujian,
                         'durasi' => $ujian->durasi,
                         'jumlah_soal' => $ujian->jumlah_soal,
                         'kode_soal' => $ujian->kode_soal,
-                        'status' => $ujian->status, 
+                        'status' => $ujian->status,
                     ],
                 ];
             }),
         ]);
     }
 
-    /**
-     * Detail ujian user.
-     */
     public function show($id): JsonResponse
     {
         $user = Auth::user();
@@ -55,22 +58,30 @@ class UserUjianController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $ujian,
+            'data' => $ujian,
         ]);
     }
 
-    /**
-     * User memulai ujian → buat record kosong di ujian_users.
-     */
     public function kerjakan(Request $request, $id): JsonResponse
     {
         $user = Auth::user();
 
+        $data = $request->validate([
+            'kode_soal' => 'required|string',
+        ]);
+
         $ujian = Ujian::where('id_ujian', $id)
+            ->where('kode_soal', $data['kode_soal'])
             ->whereHas('users', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
-            ->firstOrFail();
+            ->first();
+
+        if (!$ujian) {
+            throw ValidationException::withMessages([
+                'kode_soal' => ['Kode soal tidak valid atau Anda tidak memiliki akses ke ujian ini.'],
+            ]);
+        }
 
         if ($ujian->status !== 'Aktif') {
             return response()->json([
@@ -79,7 +90,6 @@ class UserUjianController extends Controller
             ], 403);
         }
 
-        // Buat entri ujian_users jika belum ada
         UjianUser::firstOrCreate(
             ['user_id' => $user->id, 'ujian_id' => $ujian->id_ujian],
             ['jawaban' => json_encode([])]
@@ -91,9 +101,47 @@ class UserUjianController extends Controller
         ]);
     }
 
-    /**
-     * Simpan jawaban user.
-     */
+    public function getSoalUjian($id): JsonResponse
+    {
+        $user = Auth::user();
+
+        $ujianUser = UjianUser::where('user_id', $user->id)
+            ->where('ujian_id', $id)
+            ->first();
+
+        if (!$ujianUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke ujian ini.',
+            ], 403);
+        }
+
+        $jawabanUser = json_decode($ujianUser->jawaban ?? '{}', true);
+        $soals = Soal::where('ujian_id', $id)->with('jawabans')->get();
+
+        $data = $soals->map(function ($soal) use ($jawabanUser) {
+            return [
+                'soal_id' => $soal->id,
+                'pertanyaan' => $soal->pertanyaan,
+                'media_url' => $soal->media_url,
+                'media_type' => $soal->media_type,
+                'jawaban_user' => $jawabanUser[$soal->id] ?? null,
+                'jawabans' => $soal->jawabans->map(function ($jawaban) {
+                    return [
+                        'id' => $jawaban->id,
+                        'jawaban' => $jawaban->jawaban,
+                    ];
+                }),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'ujian_id' => $id,
+            'data' => $data,
+        ]);
+    }
+
     public function simpanJawaban(Request $request, $id): JsonResponse
     {
         $user = Auth::user();
@@ -104,15 +152,80 @@ class UserUjianController extends Controller
 
         $data = $request->validate([
             'jawaban' => 'required|array',
+            'jawaban.*' => 'numeric',
         ]);
 
-        $ujianUser->update([
-            'jawaban' => json_encode($data['jawaban']),
-        ]);
+        $ujianUser->jawaban = json_encode($data['jawaban']);
+        $ujianUser->save();
 
         return response()->json([
             'success' => true,
             'message' => 'Jawaban berhasil disimpan.',
+        ]);
+    }
+
+    public function submitUjian(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+
+        $ujianUser = UjianUser::with('ujian')
+            ->where('user_id', $user->id)
+            ->where('ujian_id', $id)
+            ->firstOrFail();
+
+        if ($ujianUser->is_submitted) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian sudah disubmit sebelumnya.',
+            ], 422);
+        }
+
+        // Validasi input
+        $data = $request->validate([
+            'jawaban' => 'required|array',
+            'jawaban.*' => 'required|numeric', // Jawaban harus ID jawaban (bukan string teks)
+        ]);
+
+        // Simpan jawaban
+        $jawabanArray = collect($data['jawaban'])
+            ->mapWithKeys(fn($val, $key) => [(int) $key => (int) $val])
+            ->toArray();
+
+        $ujianUser->jawaban = $jawabanArray;
+        $ujianUser->save();
+
+        // Koreksi otomatis
+        $hasilKoreksi = $ujianUser->koreksi();
+        $nilai = $ujianUser->hitungNilai();
+        $jumlahBenar = collect($hasilKoreksi)->where('is_correct', true)->count();
+        $jumlahSoal = count($hasilKoreksi);
+
+        // Update status
+        $ujianUser->update([
+            'nilai' => $nilai,
+            'is_submitted' => true,
+            'submitted_at' => now(),
+        ]);
+
+        // Simpan ke tabel hasil ujian
+        HasilUjian::updateOrCreate(
+            ['ujian_user_id' => $ujianUser->id],
+            [
+                'ujian_user_id' => $ujianUser->id,
+                'waktu_ujian_selesai' => now(),
+                'nilai' => $nilai,
+                'status' => 'Sudah Dikerjakan',
+                'nama_ujian' => $ujianUser->ujian->nama_ujian ?? 'Ujian',
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ujian berhasil disubmit dan dikoreksi.',
+            'nilai' => $nilai,
+            'jumlah_benar' => $jumlahBenar,
+            'jumlah_soal' => $jumlahSoal,
+            'hasil_koreksi' => $hasilKoreksi,
         ]);
     }
 }

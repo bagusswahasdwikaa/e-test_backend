@@ -17,7 +17,6 @@ return new class extends Migration
             $table->date('tanggal');
             $table->integer('durasi'); // menit
             $table->integer('jumlah_soal');
-            $table->float('nilai')->nullable()->default(100);
             $table->string('kode_soal');
             $table->enum('status', ['Aktif', 'Non Aktif'])->default('Non Aktif');
             $table->timestamps();

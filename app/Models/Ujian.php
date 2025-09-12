@@ -33,7 +33,6 @@ class Ujian extends Model
         'tanggal_mulai',
         'tanggal_akhir',
         'status',
-        'nilai',
     ];
 
     /**
