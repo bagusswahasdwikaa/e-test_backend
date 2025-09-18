@@ -127,4 +127,9 @@ class User extends Authenticatable
     {
         $this->notify(new ResetPasswordNotification($token));
     }
+
+    public function ujianUsers()
+    {
+        return $this->hasMany(UjianUser::class);
+    }
 }

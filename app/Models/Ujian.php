@@ -89,4 +89,10 @@ class Ujian extends Model
             return 'Selesai';
         }
     }
+
+    public function pivotHasilUjian()
+    {
+        return $this->hasOne(\App\Models\HasilUjian::class, 'ujian_user_id', 'pivot_id');
+    }
+
 }

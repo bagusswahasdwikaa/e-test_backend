@@ -18,28 +18,30 @@ class UserUjianController extends Controller
         $this->middleware('auth:api');
     }
 
-    /**
-     * Menampilkan daftar ujian yang tersedia untuk user login.
-     */
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
 
-        $ujians = $user->ujians()->with('soals')->get();
+        // load ujian + soal + hasilUjian
+       $ujians = UjianUser::with(['ujian.soals', 'hasilUjian'])
+            ->where('user_id', $user->id)
+            ->get();
 
         return response()->json([
-            'data' => $ujians->map(function ($ujian) {
+            'data' => $ujians->map(function ($ujianUser) {
                 return [
-                    'ujian_id' => $ujian->id_ujian,
-                    'nilai' => $ujian->pivot->nilai,
-                    'status_peserta' => $ujian->pivot->is_submitted ? 'Sudah Dikerjakan' : 'Belum Dikerjakan',
+                    'ujian_id' => $ujianUser->ujian->id_ujian,
+                    'nilai' => $ujianUser->nilai,
+                    'status_peserta' => $ujianUser->hasilUjian
+                        ? $ujianUser->hasilUjian->status
+                        : 'Belum Dikerjakan',
                     'ujian' => [
-                        'id' => $ujian->id_ujian,
-                        'nama' => $ujian->nama_ujian,
-                        'durasi' => $ujian->durasi,
-                        'jumlah_soal' => $ujian->jumlah_soal,
-                        'kode_soal' => $ujian->kode_soal,
-                        'status' => $ujian->status,
+                        'id' => $ujianUser->ujian->id_ujian,
+                        'nama' => $ujianUser->ujian->nama_ujian,
+                        'durasi' => $ujianUser->ujian->durasi,
+                        'jumlah_soal' => $ujianUser->ujian->jumlah_soal,
+                        'kode_soal' => $ujianUser->ujian->kode_soal,
+                        'status' => $ujianUser->ujian->status,
                     ],
                 ];
             }),
@@ -116,7 +118,9 @@ class UserUjianController extends Controller
             ], 403);
         }
 
-        $jawabanUser = json_decode($ujianUser->jawaban ?? '{}', true);
+        // Selalu decode JSON
+        $jawabanUser = json_decode($ujianUser->jawaban ?? '{}', true) ?? [];
+
         $soals = Soal::where('ujian_id', $id)->with('jawabans')->get();
 
         $data = $soals->map(function ($soal) use ($jawabanUser) {
@@ -155,6 +159,7 @@ class UserUjianController extends Controller
             'jawaban.*' => 'numeric',
         ]);
 
+        // Simpan sebagai JSON string
         $ujianUser->jawaban = json_encode($data['jawaban']);
         $ujianUser->save();
 
@@ -180,34 +185,69 @@ class UserUjianController extends Controller
             ], 422);
         }
 
-        // Validasi input
         $data = $request->validate([
             'jawaban' => 'required|array',
-            'jawaban.*' => 'required|numeric', // Jawaban harus ID jawaban (bukan string teks)
         ]);
 
-        // Simpan jawaban
+        // Jawaban user bisa berupa string atau numeric
         $jawabanArray = collect($data['jawaban'])
-            ->mapWithKeys(fn($val, $key) => [(int) $key => (int) $val])
+            ->mapWithKeys(fn($val, $key) => [(int) $key => $val])
             ->toArray();
 
-        $ujianUser->jawaban = $jawabanArray;
+        // Simpan jawaban
+        $ujianUser->jawaban = json_encode($jawabanArray);
         $ujianUser->save();
 
         // Koreksi otomatis
-        $hasilKoreksi = $ujianUser->koreksi();
-        $nilai = $ujianUser->hitungNilai();
-        $jumlahBenar = collect($hasilKoreksi)->where('is_correct', true)->count();
-        $jumlahSoal = count($hasilKoreksi);
+        $soals = Soal::with('jawabans')->where('ujian_id', $id)->get();
+        $hasilKoreksi = [];
+        $jumlahBenar = 0;
 
-        // Update status
+        foreach ($soals as $soal) {
+            $userAnswer = $jawabanArray[$soal->id] ?? null;
+            $isCorrect = false;
+            $kunci = null;
+
+            // Jika soal punya pilihan ganda
+            if ($soal->jawabans->count() > 0) {
+                $kunci = $soal->jawabans->firstWhere('is_correct', true);
+                if ($kunci && (string)$userAnswer === (string)$kunci->id) {
+                    $isCorrect = true;
+                }
+            }
+            // Jika soal tipe isian (punya field jawaban_benar di tabel soals)
+            elseif (!empty($soal->jawaban_benar)) {
+                $kunci = $soal->jawaban_benar;
+                if (
+                    is_string($userAnswer) &&
+                    mb_strtolower(trim($userAnswer)) === mb_strtolower(trim($kunci))
+                ) {
+                    $isCorrect = true;
+                }
+            }
+
+            if ($isCorrect) {
+                $jumlahBenar++;
+            }
+
+            $hasilKoreksi[] = [
+                'soal_id' => $soal->id,
+                'jawaban_user' => $userAnswer,
+                'jawaban_benar' => $kunci instanceof \App\Models\Jawaban ? $kunci->id : $kunci,
+                'is_correct' => $isCorrect,
+            ];
+        }
+
+        $jumlahSoal = $soals->count();
+        $nilai = $jumlahSoal > 0 ? round(($jumlahBenar / $jumlahSoal) * 100, 2) : 0;
+
+        // Update status ujian user
         $ujianUser->update([
             'nilai' => $nilai,
             'is_submitted' => true,
             'submitted_at' => now(),
         ]);
 
-        // Simpan ke tabel hasil ujian
         HasilUjian::updateOrCreate(
             ['ujian_user_id' => $ujianUser->id],
             [

@@ -43,6 +43,9 @@ Route::prefix('ujians')->group(function () {
 
     // Ambil soal berdasarkan ujian
     Route::get('{ujian_id}/soals', [SoalController::class, 'getByUjianId']);
+
+    // Clone ujian
+    Route::post('{id}/clone', [UjianController::class, 'clone']);
 });
 
 // Alias opsional untuk frontend
@@ -96,7 +99,9 @@ Route::middleware('auth:api')->group(function () {
         Route::post('{id}/submit', [UserUjianController::class, 'submitUjian']);
     });
 
-    Route::get('/hasil-ujian', [HasilUjianController::class, 'index'])->middleware('auth');
+   Route::get('/hasil-ujian', [HasilUjianController::class, 'index'])->name('hasil-ujian.index');
+
+   Route::middleware('auth:api')->get('/hasil-ujian', [HasilUjianController::class, 'index']);
 
     // === ADMIN Kirim email ke peserta ===
     Route::post('/admin/ujians/{idUjian}/kirim/{userId}', [UserUjianController::class, 'kirimEmail']);

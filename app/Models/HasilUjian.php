@@ -32,17 +32,11 @@ class HasilUjian extends Model
         return $this->belongsTo(UjianUser::class, 'ujian_user_id');
     }
 
-    /**
-     * Relasi ke ujian melalui ujianUser
-     */
-     public function ujian()
+    public function ujian()
     {
         return $this->belongsTo(Ujian::class, 'ujian_id', 'id_ujian');
     }
 
-    /**
-     * Akses nama ujian langsung dari model ini
-     */
     public function getNamaUjianAttribute(): ?string
     {
         return $this->ujian?->nama_ujian;

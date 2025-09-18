@@ -116,4 +116,9 @@ class UjianUser extends Model
     {
         return $this->is_submitted ? 'Sudah Dikerjakan' : 'Belum Dikerjakan';
     }
+
+    public function hasilUjian()
+    {
+        return $this->hasOne(HasilUjian::class, 'ujian_user_id');
+    }
 }

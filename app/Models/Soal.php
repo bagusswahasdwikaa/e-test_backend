@@ -9,6 +9,11 @@ class Soal extends Model
 {
     use HasFactory;
 
+    protected $table = 'soals';
+    protected $primaryKey = 'id'; // penting
+    public $incrementing = true;
+    protected $keyType = 'int';
+
     protected $fillable = [
         'ujian_id',
         'pertanyaan',
@@ -21,10 +26,9 @@ class Soal extends Model
         return $this->belongsTo(Ujian::class, 'ujian_id', 'id_ujian');
     }
 
-
     public function jawabans()
     {
-        return $this->hasMany(Jawaban::class, 'soal_id');
+        return $this->hasMany(Jawaban::class, 'soal_id', 'id');
     }
 
     public function getMediaUrlAttribute()

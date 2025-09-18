@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\AssignUjianRequest;
 use App\Http\Requests\StoreUjianRequest;
 use App\Http\Requests\UpdateUjianRequest;
+use App\Http\Requests\CloneUjianRequest;
 use App\Models\Ujian;
 use App\Mail\UjianAssignedNotification;
 use Illuminate\Http\JsonResponse;
@@ -113,6 +114,53 @@ class UjianController extends Controller
         return response()->json([
             'message' => 'Ujian berhasil dihapus.'
         ]);
+    }
+
+    public function clone(CloneUjianRequest $request, $id): JsonResponse
+    {
+        // Ambil ujian lama beserta soal & jawaban
+        $ujianLama = Ujian::with('soals.jawabans')->where('id_ujian', $id)->firstOrFail();
+
+        // Buat salinan ujian lama
+        $ujianBaru = $ujianLama->replicate();
+        unset($ujianBaru->id_ujian); // pastikan PK tidak terbawa
+
+        $ujianBaru->kode_soal = $request->input('kode_soal');
+        $ujianBaru->tanggal_mulai = $request->input('tanggal_mulai')
+            ? Carbon::parse($request->input('tanggal_mulai'))->format('Y-m-d H:i:s')
+            : Carbon::parse($ujianLama->tanggal_mulai)->addDay()->format('Y-m-d H:i:s');
+        $ujianBaru->tanggal_akhir = $request->input('tanggal_akhir')
+            ? Carbon::parse($request->input('tanggal_akhir'))->format('Y-m-d H:i:s')
+            : Carbon::parse($ujianLama->tanggal_akhir)->addDay()->format('Y-m-d H:i:s');
+        $ujianBaru->status = $this->tentukanStatus($ujianBaru->tanggal_mulai, $ujianBaru->tanggal_akhir);
+
+        $ujianBaru->save();
+
+        // Clone soal & jawaban
+        foreach ($ujianLama->soals as $soal) {
+            $soalBaru = $soal->replicate();
+            unset($soalBaru->id);
+            unset($soalBaru->id); // kalau PK-nya id_soal
+            $soalBaru->ujian_id = $ujianBaru->id_ujian;
+            $soalBaru->save();
+
+            $newSoalId = $soalBaru->id ?? $soalBaru->id;
+
+            foreach ($soal->jawabans as $jawaban) {
+                $jawabanBaru = $jawaban->replicate();
+                unset($jawabanBaru->id);
+                unset($jawabanBaru->id); // kalau PK-nya id_jawaban
+                $jawabanBaru->soal_id = $newSoalId; // arahkan ke soal baru
+                $jawabanBaru->save();
+            }
+        }
+
+        $ujianBaru->load('soals.jawabans');
+
+        return response()->json([
+            'message' => 'Ujian berhasil dikloning beserta soal dan jawabannya.',
+            'data'    => $ujianBaru,
+        ], 201);
     }
 
     /**
