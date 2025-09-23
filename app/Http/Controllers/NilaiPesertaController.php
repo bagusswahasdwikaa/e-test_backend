@@ -2,35 +2,38 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\NilaiPeserta;
-use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use App\Models\UjianUser;
+use Illuminate\Http\JsonResponse;
 use App\Exports\NilaiPesertaExport;
 use Maatwebsite\Excel\Facades\Excel;
 
 class NilaiPesertaController extends Controller
 {
-    public function index()
+    /**
+     * Ambil daftar seluruh nilai peserta ujian
+     */
+    public function index(): JsonResponse
     {
-        $data = NilaiPeserta::with(['user', 'ujian'])
-            ->whereHas('user', function ($query) {
-                $query->where('role', 'user');  // Hanya user dengan role 'user'
-            })
-            ->get();
+        $nilaiPesertas = UjianUser::with(['user', 'ujian'])
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'user_id' => $item->user_id,
+                    'nama_lengkap' => $item->user->full_name,
+                    'id_ujian' => $item->ujian?->id_ujian,
+                    'nama_ujian' => $item->ujian?->nama_ujian,
+                    'tanggal' => $item->submitted_at?->format('Y-m-d H:i'),
+                    'nilai' => $item->nilai,
+                    'status' => $item->status_peserta,
+                ];
+            });
 
-        $result = $data->map(function ($item) {
-            return [
-                'id_peserta' => $item->user->id,
-                'nama_lengkap' => $item->user->first_name . ' ' . $item->user->last_name,
-                'tanggal' => $item->tanggal,
-                'hasil_tes' => $item->nilai,
-                'nama_ujian' => $item->ujian->nama_ujian ?? '-',
-                'status' => $item->status,
-            ];
-        });
-
-        return response()->json($result);
+        return response()->json([
+            'success' => true,
+            'data' => $nilaiPesertas,
+        ]);
     }
-
     // Method export ke Excel
     public function export()
     {

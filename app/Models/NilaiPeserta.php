@@ -1,29 +1,26 @@
 <?php
+
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class NilaiPeserta extends Model
 {
-    use HasFactory;
-
-    protected $table = 'daftar_nilai_peserta';
+    protected $table = 'nilai_pesertas';
 
     protected $fillable = [
         'user_id',
         'ujian_id',
-        'tanggal',
         'nilai',
-        'status',
     ];
 
-    public function user()
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function ujian()
+    public function ujian(): BelongsTo
     {
         return $this->belongsTo(Ujian::class, 'ujian_id', 'id_ujian');
     }
