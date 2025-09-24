@@ -10,6 +10,7 @@ use App\Http\Controllers\SoalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserUjianController;
 use App\Http\Controllers\HasilUjianController;
+use App\Http\Controllers\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -106,3 +107,5 @@ Route::middleware('auth:api')->group(function () {
     // === ADMIN Kirim email ke peserta ===
     Route::post('/admin/ujians/{idUjian}/kirim/{userId}', [UserUjianController::class, 'kirimEmail']);
 });
+
+Route::get('/dashboard', [DashboardController::class, 'index']);
