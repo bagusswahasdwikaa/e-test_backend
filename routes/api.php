@@ -91,13 +91,14 @@ Route::middleware('auth:api')->group(function () {
     // =========================
     // USER UJIAN (Peserta)
     // =========================
-    Route::prefix('user/ujians')->group(function () {
-        Route::get('/', [UserUjianController::class, 'index']);                       // Daftar ujian yang di-assign
-        Route::get('{id}', [UserUjianController::class, 'show']);                    // Detail ujian peserta
-        Route::post('{id}/kerjakan', [UserUjianController::class, 'kerjakan']);
-        Route::get('{id}/soal', [UserUjianController::class, 'getSoalUjian']);      // Mulai ujian (dengan kode_soal)
-        Route::post('{id}/jawaban', [UserUjianController::class, 'simpanJawaban']);  // Kirim/simpan jawaban
-        Route::post('{id}/submit', [UserUjianController::class, 'submitUjian']);
+    Route::middleware('auth:api')->prefix('user/ujians')->group(function () {
+        Route::get('/', [UserUjianController::class, 'index']);           
+        Route::get('{id}', [UserUjianController::class, 'show']);           
+        Route::post('{id}/kerjakan', [UserUjianController::class, 'kerjakan']); 
+        Route::get('{id}/soal', [UserUjianController::class, 'getSoalUjian']); 
+        Route::post('{id}/jawaban', [UserUjianController::class, 'simpanJawaban']);  
+        Route::post('{id}/submit', [UserUjianController::class, 'submitUjian']); 
+        Route::get('{id}/hasil', [UserUjianController::class, 'hasilUjian']);
     });
 
    Route::get('/hasil-ujian', [HasilUjianController::class, 'index'])->name('hasil-ujian.index');

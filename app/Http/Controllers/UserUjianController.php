@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use Carbon\Carbon;
 
 class UserUjianController extends Controller
 {
@@ -22,13 +23,16 @@ class UserUjianController extends Controller
     {
         $user = $request->user();
 
-        // load ujian + soal + hasilUjian
-       $ujians = UjianUser::with(['ujian.soals', 'hasilUjian'])
+        $ujians = UjianUser::with(['ujian.soals', 'hasilUjian'])
             ->where('user_id', $user->id)
             ->get();
 
         return response()->json([
             'data' => $ujians->map(function ($ujianUser) {
+                $endTime = $ujianUser->started_at
+                    ? Carbon::parse($ujianUser->started_at)->addMinutes($ujianUser->ujian->durasi)
+                    : null;
+
                 return [
                     'ujian_id' => $ujianUser->ujian->id_ujian,
                     'nilai' => $ujianUser->nilai,
@@ -43,6 +47,8 @@ class UserUjianController extends Controller
                         'kode_soal' => $ujianUser->ujian->kode_soal,
                         'status' => $ujianUser->ujian->status,
                     ],
+                    'started_at' => $ujianUser->started_at,
+                    'end_time' => $endTime,
                 ];
             }),
         ]);
@@ -64,42 +70,39 @@ class UserUjianController extends Controller
         ]);
     }
 
-    public function kerjakan(Request $request, $id): JsonResponse
+    public function kerjakan(Request $request, $id)
     {
-        $user = Auth::user();
-
-        $data = $request->validate([
+        $request->validate([
             'kode_soal' => 'required|string',
         ]);
 
-        $ujian = Ujian::where('id_ujian', $id)
-            ->where('kode_soal', $data['kode_soal'])
-            ->whereHas('users', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })
-            ->first();
+        $ujian = Ujian::findOrFail($id);
 
-        if (!$ujian) {
-            throw ValidationException::withMessages([
-                'kode_soal' => ['Kode soal tidak valid atau Anda tidak memiliki akses ke ujian ini.'],
-            ]);
-        }
-
-        if ($ujian->status !== 'Aktif') {
+        if ($ujian->kode_soal !== $request->kode_soal) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ujian tidak aktif atau sudah berakhir.',
-            ], 403);
+                'message' => 'Kode soal salah.',
+            ], 200); // jangan 422 supaya tidak munculin AxiosError merah
         }
 
-        UjianUser::firstOrCreate(
-            ['user_id' => $user->id, 'ujian_id' => $ujian->id_ujian],
-            ['jawaban' => json_encode([])]
+        $user = auth()->user();
+
+        $ujianUser = UjianUser::firstOrCreate(
+            ['ujian_id' => $ujian->id_ujian, 'user_id' => $user->id]
         );
+
+        // Kalau belum pernah mulai, set started_at dan end_time
+        if (!$ujianUser->started_at) {
+            $ujianUser->started_at = now();
+            $ujianUser->end_time = now()->addMinutes($ujian->durasi);
+            $ujianUser->save();
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Ujian berhasil dimulai.',
+            'message' => 'Ujian dimulai',
+            'started_at' => $ujianUser->started_at,
+            'end_time' => $ujianUser->end_time,
         ]);
     }
 
@@ -107,7 +110,7 @@ class UserUjianController extends Controller
     {
         $user = Auth::user();
 
-        $ujianUser = UjianUser::where('user_id', $user->id)
+        $ujianUser = UjianUser::with('ujian')->where('user_id', $user->id)
             ->where('ujian_id', $id)
             ->first();
 
@@ -118,7 +121,18 @@ class UserUjianController extends Controller
             ], 403);
         }
 
-        // Selalu decode JSON
+        // Cek waktu habis
+        if ($ujianUser->started_at) {
+            $endTime = Carbon::parse($ujianUser->started_at)->addMinutes($ujianUser->ujian->durasi);
+            if (now()->gt($endTime)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Waktu ujian sudah habis.',
+                ], 403);
+            }
+        }
+
+        // Ambil jawaban sementara dari DB
         $jawabanUser = json_decode($ujianUser->jawaban ?? '{}', true) ?? [];
 
         $soals = Soal::where('ujian_id', $id)->with('jawabans')->get();
@@ -129,7 +143,7 @@ class UserUjianController extends Controller
                 'pertanyaan' => $soal->pertanyaan,
                 'media_url' => $soal->media_url,
                 'media_type' => $soal->media_type,
-                'jawaban_user' => $jawabanUser[$soal->id] ?? null,
+                'jawaban_user' => $jawabanUser[$soal->id] ?? null, // ambil jawaban terakhir user
                 'jawabans' => $soal->jawabans->map(function ($jawaban) {
                     return [
                         'id' => $jawaban->id,
@@ -142,30 +156,62 @@ class UserUjianController extends Controller
         return response()->json([
             'success' => true,
             'ujian_id' => $id,
+            'started_at' => $ujianUser->started_at,
+            'end_time' => $ujianUser->started_at
+                ? Carbon::parse($ujianUser->started_at)->addMinutes($ujianUser->ujian->durasi)
+                : null,
             'data' => $data,
         ]);
+    }
+
+    private function mergeJawaban(array $jawabanLama, array $jawabanBaru): array
+    {
+        foreach ($jawabanBaru as $soalId => $ans) {
+            // Kalau soal belum pernah dijawab atau jawabannya berubah, update
+            if (!array_key_exists($soalId, $jawabanLama) || $jawabanLama[$soalId] !== $ans) {
+                $jawabanLama[$soalId] = $ans;
+            }
+        }
+        return $jawabanLama;
     }
 
     public function simpanJawaban(Request $request, $id): JsonResponse
     {
         $user = Auth::user();
 
-        $ujianUser = UjianUser::where('user_id', $user->id)
+        $ujianUser = UjianUser::with('ujian')
+            ->where('user_id', $user->id)
             ->where('ujian_id', $id)
             ->firstOrFail();
 
+        // Cek waktu habis
+        if ($ujianUser->started_at) {
+            $endTime = Carbon::parse($ujianUser->started_at)->addMinutes($ujianUser->ujian->durasi);
+            if (now()->gt($endTime)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Waktu ujian sudah habis. Jawaban tidak bisa disimpan.',
+                ], 403);
+            }
+        }
+
         $data = $request->validate([
             'jawaban' => 'required|array',
-            'jawaban.*' => 'numeric',
         ]);
 
-        // Simpan sebagai JSON string
-        $ujianUser->jawaban = json_encode($data['jawaban']);
-        $ujianUser->save();
+        $jawabanLama = json_decode($ujianUser->jawaban ?? '{}', true) ?? [];
+        $jawabanFinal = $this->mergeJawaban($jawabanLama, $data['jawaban']);
+
+        // Hanya simpan kalau ada perubahan
+        if ($jawabanFinal !== $jawabanLama) {
+            $ujianUser->jawaban = json_encode($jawabanFinal);
+            $ujianUser->save();
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Jawaban berhasil disimpan.',
+            'message' => 'Jawaban sementara berhasil disimpan.',
+            'jawaban' => $jawabanFinal,
         ]);
     }
 
@@ -178,6 +224,11 @@ class UserUjianController extends Controller
             ->where('ujian_id', $id)
             ->firstOrFail();
 
+        $endTime = null;
+        if ($ujianUser->started_at) {
+            $endTime = Carbon::parse($ujianUser->started_at)->addMinutes($ujianUser->ujian->durasi);
+        }
+
         if ($ujianUser->is_submitted) {
             return response()->json([
                 'success' => false,
@@ -189,14 +240,14 @@ class UserUjianController extends Controller
             'jawaban' => 'required|array',
         ]);
 
-        // Jawaban user bisa berupa string atau numeric
-        $jawabanArray = collect($data['jawaban'])
-            ->mapWithKeys(fn($val, $key) => [(int) $key => $val])
-            ->toArray();
+        // Merge dengan jawaban lama biar tidak hilang
+        $jawabanLama = json_decode($ujianUser->jawaban ?? '{}', true) ?? [];
+        $jawabanFinal = $this->mergeJawaban($jawabanLama, $data['jawaban']);
 
-        // Simpan jawaban
-        $ujianUser->jawaban = json_encode($jawabanArray);
-        $ujianUser->save();
+        if ($jawabanFinal !== $jawabanLama) {
+            $ujianUser->jawaban = json_encode($jawabanFinal);
+            $ujianUser->save();
+        }
 
         // Koreksi otomatis
         $soals = Soal::with('jawabans')->where('ujian_id', $id)->get();
@@ -204,19 +255,16 @@ class UserUjianController extends Controller
         $jumlahBenar = 0;
 
         foreach ($soals as $soal) {
-            $userAnswer = $jawabanArray[$soal->id] ?? null;
+            $userAnswer = $jawabanFinal[$soal->id] ?? null;
             $isCorrect = false;
             $kunci = null;
 
-            // Jika soal punya pilihan ganda
             if ($soal->jawabans->count() > 0) {
                 $kunci = $soal->jawabans->firstWhere('is_correct', true);
                 if ($kunci && (string)$userAnswer === (string)$kunci->id) {
                     $isCorrect = true;
                 }
-            }
-            // Jika soal tipe isian (punya field jawaban_benar di tabel soals)
-            elseif (!empty($soal->jawaban_benar)) {
+            } elseif (!empty($soal->jawaban_benar)) {
                 $kunci = $soal->jawaban_benar;
                 if (
                     is_string($userAnswer) &&
@@ -239,9 +287,8 @@ class UserUjianController extends Controller
         }
 
         $jumlahSoal = $soals->count();
-        $nilai = $jumlahSoal > 0 ? round(($jumlahBenar / $jumlahSoal) * 100, 2) : 0;
+        $nilai = $jumlahSoal > 0 ? (int) round(($jumlahBenar / $jumlahSoal) * 100) : 0;
 
-        // Update status ujian user
         $ujianUser->update([
             'nilai' => $nilai,
             'is_submitted' => true,
@@ -259,9 +306,13 @@ class UserUjianController extends Controller
             ]
         );
 
+        $isTimeout = $endTime && now()->gt($endTime);
+
         return response()->json([
             'success' => true,
-            'message' => 'Ujian berhasil disubmit dan dikoreksi.',
+            'message' => $isTimeout
+                ? 'Waktu ujian sudah habis, jawaban terakhir berhasil disubmit dan dinilai.'
+                : 'Ujian berhasil disubmit dan dikoreksi.',
             'nilai' => $nilai,
             'jumlah_benar' => $jumlahBenar,
             'jumlah_soal' => $jumlahSoal,

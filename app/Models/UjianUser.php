@@ -17,12 +17,16 @@ class UjianUser extends Model
         'nilai',
         'is_submitted',
         'submitted_at',
+        'started_at',   
+        'end_time', 
     ];
 
     protected $casts = [
         'jawaban' => 'array',
         'is_submitted' => 'boolean',
         'submitted_at' => 'datetime',
+        'started_at' => 'datetime',   
+        'end_time' => 'datetime',
     ];
 
     /*
@@ -108,7 +112,7 @@ class UjianUser extends Model
         $jumlahBenar = collect($hasil)->where('is_correct', true)->count();
         $totalSoal = count($hasil);
 
-        return $totalSoal > 0 ? round(($jumlahBenar / $totalSoal) * 100) : 0;
+        return $totalSoal > 0 ? (int) round(($jumlahBenar / $totalSoal) * 100) : 0;
     }
 
 
