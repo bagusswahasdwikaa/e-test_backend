@@ -17,6 +17,7 @@ class PesertaController extends Controller
             'last_name',
             'email',
             'status',
+            'instansi',
             'bio',
             'photo_url',
         ]);
@@ -26,6 +27,7 @@ class PesertaController extends Controller
             'Nama Lengkap' => trim("{$u->first_name} {$u->last_name}"),
             'Email'        => $u->email,
             'Status'       => $u->status,
+            'instansi'     => $u->instansi,
             'Bio'          => $u->bio,
             'Photo URL'    => $u->photo_url,
             'Aksi'         => [
@@ -50,6 +52,7 @@ class PesertaController extends Controller
             'email'      => 'required|email|unique:users,email',
             'password'   => 'required|string|confirmed|min:6',
             'status'     => ['required', Rule::in(['aktif', 'non aktif'])],
+            'instansi'   => 'required|string|max:100',
             'bio'        => 'nullable|string',
             'photo_url'  => 'nullable|url',
         ]);
@@ -62,6 +65,7 @@ class PesertaController extends Controller
             'password'   => bcrypt($validated['password']),
             'status'     => $validated['status'],
             'role'       => 'user',
+            'instansi'   => $validated['instansi'],
             'bio'        => $validated['bio'] ?? null,
             'photo_url'  => $validated['photo_url'] ?? null,
         ]);
@@ -82,6 +86,7 @@ class PesertaController extends Controller
                 'Nama Lengkap' => trim("{$user->first_name} {$user->last_name}"),
                 'Email'        => $user->email,
                 'Status'       => $user->status,
+                'instansi'     => $user->instansi,
                 'bio'          => $user->bio,
                 'photo_url'    => $user->photo_url,
             ];
@@ -111,6 +116,7 @@ class PesertaController extends Controller
                     'email',
                     Rule::unique('users')->ignore($user->id),
                 ],
+                'instansi'   => 'sometimes|required|string|max:100',
                 'password'   => 'sometimes|nullable|string|confirmed|min:6',
                 'status'     => ['sometimes', 'required', Rule::in(['aktif', 'non aktif'])],
                 'bio'        => 'nullable|string',

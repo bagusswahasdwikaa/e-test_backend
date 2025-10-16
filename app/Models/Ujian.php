@@ -28,6 +28,8 @@ class Ujian extends Model
     protected $fillable = [
         'nama_ujian',
         'kode_soal',
+        'jenis_ujian',
+        'standar_minimal_nilai',
         'jumlah_soal',
         'durasi',
         'tanggal_mulai',

@@ -40,6 +40,22 @@ class UjianController extends Controller
         $data = $request->validated();
         $tz   = config('app.timezone', 'Asia/Jakarta');
 
+        // Validasi logika jenis_ujian dan standar_minimal_nilai
+        if ($data['jenis_ujian'] === 'POSTEST') {
+            if (!isset($data['standar_minimal_nilai'])) {
+                return response()->json([
+                    'message' => 'Standar minimal nilai wajib diisi untuk jenis ujian POSTEST.'
+                ], 422);
+            }
+        } elseif ($data['jenis_ujian'] === 'PRETEST') {
+            if (isset($data['standar_minimal_nilai'])) {
+                return response()->json([
+                    'message' => 'Standar minimal nilai tidak boleh diisi untuk jenis ujian PRETEST.'
+                ], 422);
+            }
+            $data['standar_minimal_nilai'] = null;
+        }
+
         // Format tanggal ke Y-m-d H:i:s
         $data['tanggal_mulai'] = Carbon::parse($data['tanggal_mulai'])->timezone($tz)->format('Y-m-d H:i:s');
         $data['tanggal_akhir'] = Carbon::parse($data['tanggal_akhir'])->timezone($tz)->format('Y-m-d H:i:s');
@@ -82,6 +98,24 @@ class UjianController extends Controller
         $ujian = Ujian::findOrFail($id);
         $data  = $request->validated();
         $tz    = config('app.timezone', 'Asia/Jakarta');
+
+        // Validasi logika jenis_ujian dan standar_minimal_nilai
+        if (isset($data['jenis_ujian'])) {
+            if ($data['jenis_ujian'] === 'POSTEST') {
+                if (!isset($data['standar_minimal_nilai'])) {
+                    return response()->json([
+                        'message' => 'Standar minimal nilai wajib diisi untuk jenis ujian POSTEST.'
+                    ], 422);
+                }
+            } elseif ($data['jenis_ujian'] === 'PRETEST') {
+                if (isset($data['standar_minimal_nilai'])) {
+                    return response()->json([
+                        'message' => 'Standar minimal nilai tidak boleh diisi untuk jenis ujian PRETEST.'
+                    ], 422);
+                }
+                $data['standar_minimal_nilai'] = null;
+            }
+        }
 
         if (isset($data['tanggal_mulai'])) {
             $data['tanggal_mulai'] = Carbon::parse($data['tanggal_mulai'])->timezone($tz)->format('Y-m-d H:i:s');

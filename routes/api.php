@@ -73,6 +73,7 @@ Route::apiResource('list-peserta', ListPesertaController::class);
 // =========================
 Route::prefix('nilai-peserta')->group(function () {
     Route::get('/', [NilaiPesertaController::class, 'index']);
+    Route::get('/peserta/{id}', [NilaiPesertaController::class, 'riwayatByUser']);
     Route::get('/export', [NilaiPesertaController::class, 'export']);
 });
 
@@ -97,8 +98,10 @@ Route::middleware('auth:api')->group(function () {
         Route::post('{id}/kerjakan', [UserUjianController::class, 'kerjakan']); 
         Route::get('{id}/soal', [UserUjianController::class, 'getSoalUjian']); 
         Route::post('{id}/jawaban', [UserUjianController::class, 'simpanJawaban']);  
-        Route::post('{id}/submit', [UserUjianController::class, 'submitUjian']); 
+        Route::post('{id}/submit', [UserUjianController::class, 'submitUjian']);
+        Route::post('{id}/ulang', [UserUjianController::class, 'ulangUjian']); 
         Route::get('{id}/hasil', [UserUjianController::class, 'hasilUjian']);
+        Route::get('{id}/riwayat', [UserUjianController::class, 'getRiwayatUjian']);
     });
 
    Route::get('/hasil-ujian', [HasilUjianController::class, 'index'])->name('hasil-ujian.index');

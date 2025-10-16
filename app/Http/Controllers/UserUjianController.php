@@ -240,7 +240,7 @@ class UserUjianController extends Controller
             'jawaban' => 'required|array',
         ]);
 
-        // Merge dengan jawaban lama biar tidak hilang
+        // Gabung jawaban lama dengan baru
         $jawabanLama = json_decode($ujianUser->jawaban ?? '{}', true) ?? [];
         $jawabanFinal = $this->mergeJawaban($jawabanLama, $data['jawaban']);
 
@@ -295,6 +295,7 @@ class UserUjianController extends Controller
             'submitted_at' => now(),
         ]);
 
+        // Simpan hasil ujian
         HasilUjian::updateOrCreate(
             ['ujian_user_id' => $ujianUser->id],
             [
@@ -306,17 +307,91 @@ class UserUjianController extends Controller
             ]
         );
 
-        $isTimeout = $endTime && now()->gt($endTime);
+        $standarMinimal = $ujianUser->ujian->standar_minimal_nilai ?? 0;
+        $jenisUjian = $ujianUser->ujian->jenis_ujian ?? 'PRETEST';
+        $allowRetry = false;
+
+        // 🔁 Logika khusus POSTEST
+        if ($jenisUjian === 'POSTEST' && $nilai < $standarMinimal) {
+            $allowRetry = true;
+
+            // Reset ujian yang sama tanpa membuat record baru
+            $ujianUser->update([
+                'jawaban' => null,
+                'nilai' => null,
+                'started_at' => now(),
+                'end_time' => null,
+                'is_submitted' => false,
+                'submitted_at' => null,
+            ]);
+        }
 
         return response()->json([
             'success' => true,
-            'message' => $isTimeout
-                ? 'Waktu ujian sudah habis, jawaban terakhir berhasil disubmit dan dinilai.'
-                : 'Ujian berhasil disubmit dan dikoreksi.',
+            'message' => 'Ujian berhasil disubmit dan dikoreksi.',
             'nilai' => $nilai,
             'jumlah_benar' => $jumlahBenar,
             'jumlah_soal' => $jumlahSoal,
             'hasil_koreksi' => $hasilKoreksi,
+            'standar_minimal' => $standarMinimal,
+            'jenis_ujian' => $jenisUjian,
+            'allow_retry' => $allowRetry,
+            'action' => $allowRetry ? 'ulang' : 'lihat_detail',
+        ]);
+    }
+
+    public function ulangUjian($id): JsonResponse
+    {
+        $user = Auth::user();
+
+        $ujianUser = UjianUser::with('ujian')
+            ->where('user_id', $user->id)
+            ->where('ujian_id', $id)
+            ->firstOrFail();
+
+        // Pastikan ujian POSTEST dan nilainya di bawah standar minimal
+        $ujian = $ujianUser->ujian;
+        if (!$ujian || $ujian->jenis_ujian !== 'POSTEST') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian ini tidak dapat diulang.',
+            ], 403);
+        }
+
+        if ($ujianUser->nilai >= $ujian->standar_minimal_nilai) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nilai sudah memenuhi standar. Tidak perlu mengulang.',
+            ], 403);
+        }
+
+        // Simpan riwayat lama ke HasilUjian (kalau belum tersimpan)
+        HasilUjian::updateOrCreate(
+            ['ujian_user_id' => $ujianUser->id],
+            [
+                'ujian_user_id' => $ujianUser->id,
+                'waktu_ujian_selesai' => now(),
+                'nilai' => $ujianUser->nilai,
+                'status' => 'Ulangan Disimpan',
+                'nama_ujian' => $ujian->nama_ujian ?? 'Ujian',
+            ]
+        );
+
+        // Reset jawaban dan waktu untuk mengulang ujian dari awal
+        $ujianUser->update([
+            'jawaban' => null,
+            'nilai' => null,
+            'is_submitted' => false,
+            'submitted_at' => null,
+            'started_at' => now(),
+            'end_time' => now()->addMinutes($ujian->durasi),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ujian direset. Silakan mulai dari awal.',
+            'started_at' => $ujianUser->started_at,
+            'end_time' => $ujianUser->end_time,
         ]);
     }
 }

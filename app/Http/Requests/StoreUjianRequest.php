@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreUjianRequest extends FormRequest
 {
@@ -18,16 +19,34 @@ class StoreUjianRequest extends FormRequest
             'nama_ujian'     => 'required|string|max:255',
             'tanggal_mulai'  => 'required|date_format:Y-m-d H:i:s',
             'tanggal_akhir'  => 'required|date_format:Y-m-d H:i:s|after_or_equal:tanggal_mulai',
-            'durasi'         => 'required|integer|min:1', // durasi dalam menit
+            'durasi'         => 'required|integer|min:1',
             'jumlah_soal'    => 'required|integer|min:1',
             'kode_soal'      => [
                 'required',
                 'string',
                 'max:50',
-                Rule::unique('ujians', 'kode_soal'), // pastikan nama tabel sesuai di DB Anda
+                Rule::unique('ujians', 'kode_soal'),
             ],
-            'nilai'          => 'nullable|integer|min:0|max:100',
+            'nilai'                  => 'nullable|integer|min:0|max:100',
+            'jenis_ujian'           => 'required|in:PRETEST,POSTEST',
+            'standar_minimal_nilai' => 'nullable|integer|min:0|max:100', // dikontrol manual di bawah
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $jenis = $this->input('jenis_ujian');
+            $standar = $this->input('standar_minimal_nilai');
+
+            if ($jenis === 'POSTEST' && is_null($standar)) {
+                $validator->errors()->add('standar_minimal_nilai', 'Standar minimal nilai wajib diisi untuk POSTEST.');
+            }
+
+            if ($jenis === 'PRETEST' && !is_null($standar)) {
+                $validator->errors()->add('standar_minimal_nilai', 'Standar minimal nilai tidak boleh diisi untuk PRETEST.');
+            }
+        });
     }
 
     public function messages(): array
@@ -48,6 +67,9 @@ class StoreUjianRequest extends FormRequest
             'nilai.integer'               => 'Nilai harus berupa angka.',
             'nilai.min'                   => 'Nilai minimal 0.',
             'nilai.max'                   => 'Nilai maksimal 100.',
+            'jenis_ujian.required'        => 'Jenis ujian wajib dipilih.',
+            'jenis_ujian.in'              => 'Jenis ujian harus PRETEST atau POSTEST.',
+            'standar_minimal_nilai.integer' => 'Standar minimal nilai harus berupa angka.',
         ];
     }
 }

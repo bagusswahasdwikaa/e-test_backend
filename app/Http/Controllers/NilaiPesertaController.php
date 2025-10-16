@@ -38,4 +38,24 @@ class NilaiPesertaController extends Controller
     {
         return Excel::download(new NilaiPesertaExport, 'nilai_peserta.xlsx');
     }
+
+    public function riwayatByUser($id): JsonResponse
+    {
+        $riwayat = UjianUser::with(['ujian'])
+            ->where('user_id', $id)
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'nama_ujian' => $item->ujian?->nama_ujian ?? '-',
+                    'nilai' => $item->nilai,
+                    'status' => $item->status_peserta ?? 'Belum Dikerjakan',
+                    'waktu_selesai' => $item->submitted_at?->format('d-m-Y H:i:s'),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $riwayat,
+        ]);
+    }
 }

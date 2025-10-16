@@ -26,8 +26,26 @@ class UpdateUjianRequest extends FormRequest
                 'max:50',
                 Rule::unique('ujians', 'kode_soal')->ignore($this->route('id'), 'id_ujian'),
             ],
-            'nilai'          => 'sometimes|integer|min:0|max:100',
+            'nilai'                  => 'sometimes|integer|min:0|max:100',
+            'jenis_ujian'           => 'sometimes|in:PRETEST,POSTEST',
+            'standar_minimal_nilai' => 'nullable|integer|min:0|max:100',
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $jenis  = $this->input('jenis_ujian');
+            $standar = $this->input('standar_minimal_nilai');
+
+            if ($jenis === 'POSTEST' && is_null($standar)) {
+                $validator->errors()->add('standar_minimal_nilai', 'Standar minimal nilai wajib diisi untuk POSTEST.');
+            }
+
+            if ($jenis === 'PRETEST' && !is_null($standar)) {
+                $validator->errors()->add('standar_minimal_nilai', 'Standar minimal nilai tidak boleh diisi untuk PRETEST.');
+            }
+        });
     }
 
     public function messages(): array
@@ -37,6 +55,8 @@ class UpdateUjianRequest extends FormRequest
             'tanggal_akhir.date_format'    => 'Format tanggal akhir harus Y-m-d H:i:s.',
             'tanggal_akhir.after_or_equal' => 'Tanggal akhir harus setelah atau sama dengan tanggal mulai.',
             'kode_soal.unique'             => 'Kode soal sudah digunakan oleh ujian lain.',
+            'jenis_ujian.in'               => 'Jenis ujian harus PRETEST atau POSTEST.',
+            'standar_minimal_nilai.integer' => 'Standar minimal nilai harus berupa angka.',
         ];
     }
 }
