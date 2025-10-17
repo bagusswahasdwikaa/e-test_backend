@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('daftar_nilai_peserta', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id'); // relasi ke users.id
+            $table->string('user_id', 20); // relasi ke users.id
             $table->unsignedBigInteger('ujian_id');
             $table->date('tanggal');
             $table->float('nilai')->nullable();

@@ -13,6 +13,6 @@
         <li><strong>Waktu Akhir:</strong> {{ $ujian->tanggal_akhir }}</li>
         <li><strong>Kode :</strong> {{ $ujian->kode_soal }}</li>
     </ul>
-    <p>Silakan login E-TEST untuk mengerjakan ujian tersebut. Semoga sukses!</p>
+    <p>Silakan login E-TEST http://localhost:3000/authentication/login untuk mengerjakan ujian tersebut. Semoga sukses!</p>
 </body>
 </html>

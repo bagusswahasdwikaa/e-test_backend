@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('ujian_users', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('ujian_id');
-            $table->unsignedBigInteger('user_id');
+            $table->string('user_id', 20);
             $table->integer('nilai')->nullable(); // opsional
             $table->text('jawaban')->nullable();  // opsional
             $table->timestamps();

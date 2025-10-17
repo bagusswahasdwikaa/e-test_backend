@@ -18,9 +18,10 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validated = $request->validate([
-            'id'         => 'required|integer|unique:users,id|max:16',
+            'id'         => 'required|string|size:16|regex:/^[0-9]+$/',
             'first_name' => 'required|string|max:255',
             'last_name'  => 'required|string|max:255',
+            'instansi'   => 'required|string|max:255',
             'email'      => 'required|string|email|max:255|unique:users',
             'password'   => 'required|string|min:6|confirmed',
         ]);
@@ -28,9 +29,10 @@ class AuthController extends Controller
         $token = Str::random(80);
 
         $user = User::create([
-            'id'         => $validated['id'], // ID sebagai integer
+            'id'         => $validated['id'], 
             'first_name' => $validated['first_name'],
             'last_name'  => $validated['last_name'],
+            'instansi'   => $validated['instansi'],
             'email'      => $validated['email'],
             'password'   => bcrypt($validated['password']),
             'role'       => 'user',

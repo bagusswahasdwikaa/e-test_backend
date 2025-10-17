@@ -240,7 +240,6 @@ class UserUjianController extends Controller
             'jawaban' => 'required|array',
         ]);
 
-        // Gabung jawaban lama dengan baru
         $jawabanLama = json_decode($ujianUser->jawaban ?? '{}', true) ?? [];
         $jawabanFinal = $this->mergeJawaban($jawabanLama, $data['jawaban']);
 
@@ -249,7 +248,7 @@ class UserUjianController extends Controller
             $ujianUser->save();
         }
 
-        // Koreksi otomatis
+        // Koreksi
         $soals = Soal::with('jawabans')->where('ujian_id', $id)->get();
         $hasilKoreksi = [];
         $jumlahBenar = 0;
@@ -289,13 +288,39 @@ class UserUjianController extends Controller
         $jumlahSoal = $soals->count();
         $nilai = $jumlahSoal > 0 ? (int) round(($jumlahBenar / $jumlahSoal) * 100) : 0;
 
+        $standarMinimal = $ujianUser->ujian->standar_minimal_nilai ?? 0;
+        $jenisUjian = $ujianUser->ujian->jenis_ujian ?? 'PRETEST';
+
+        if ($nilai < $standarMinimal) {
+            // Jika belum lulus, reset jawaban untuk ulang
+            $ujianUser->update([
+                'jawaban' => null,
+                'nilai' => null,
+                'started_at' => now(),
+                'end_time' => now()->addMinutes($ujianUser->ujian->durasi),
+                'is_submitted' => false,
+                'submitted_at' => null,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Nilai belum memenuhi standar minimal. Silakan ulangi ujian.',
+                'nilai' => $nilai,
+                'jumlah_benar' => $jumlahBenar,
+                'jumlah_soal' => $jumlahSoal,
+                'hasil_koreksi' => $hasilKoreksi,
+                'standar_minimal' => $standarMinimal,
+                'action' => 'ulang',
+            ], 200);
+        }
+
+        // Jika lulus
         $ujianUser->update([
             'nilai' => $nilai,
             'is_submitted' => true,
             'submitted_at' => now(),
         ]);
 
-        // Simpan hasil ujian
         HasilUjian::updateOrCreate(
             ['ujian_user_id' => $ujianUser->id],
             [
@@ -307,36 +332,15 @@ class UserUjianController extends Controller
             ]
         );
 
-        $standarMinimal = $ujianUser->ujian->standar_minimal_nilai ?? 0;
-        $jenisUjian = $ujianUser->ujian->jenis_ujian ?? 'PRETEST';
-        $allowRetry = false;
-
-        // 🔁 Logika khusus POSTEST
-        if ($jenisUjian === 'POSTEST' && $nilai < $standarMinimal) {
-            $allowRetry = true;
-
-            // Reset ujian yang sama tanpa membuat record baru
-            $ujianUser->update([
-                'jawaban' => null,
-                'nilai' => null,
-                'started_at' => now(),
-                'end_time' => null,
-                'is_submitted' => false,
-                'submitted_at' => null,
-            ]);
-        }
-
         return response()->json([
             'success' => true,
-            'message' => 'Ujian berhasil disubmit dan dikoreksi.',
+            'message' => 'Ujian berhasil disubmit dan dinyatakan lulus.',
             'nilai' => $nilai,
             'jumlah_benar' => $jumlahBenar,
             'jumlah_soal' => $jumlahSoal,
             'hasil_koreksi' => $hasilKoreksi,
             'standar_minimal' => $standarMinimal,
-            'jenis_ujian' => $jenisUjian,
-            'allow_retry' => $allowRetry,
-            'action' => $allowRetry ? 'ulang' : 'lihat_detail',
+            'action' => 'selesai',
         ]);
     }
 
