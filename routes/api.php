@@ -83,6 +83,8 @@ Route::prefix('nilai-peserta')->group(function () {
 Route::middleware('auth:api')->group(function () {
     // === AUTH ===
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/change-password', [AuthController::class, 'changePassword']);
+
 
     // === PROFILE ===
     Route::get('/profile', [ProfileController::class, 'show']);

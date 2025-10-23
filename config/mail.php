@@ -99,7 +99,7 @@ return [
 
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'sediesereal@gmail.com'),
-        'name' => env('MAIL_FROM_NAME', 'E-TEST P'),
+        'name' => env('MAIL_FROM_NAME', 'PGLSMID e-test'),
     ],
 
 

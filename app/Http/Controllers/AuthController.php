@@ -18,7 +18,7 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validated = $request->validate([
-            'id'         => 'required|string|size:16|regex:/^[0-9]+$/',
+            'id'         => 'required|string|regex:/^[0-9]+$/',
             'first_name' => 'required|string|max:255',
             'last_name'  => 'required|string|max:255',
             'instansi'   => 'required|string|max:255',
@@ -55,7 +55,8 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        $user = User::where('email', $credentials['email'])->first();
+        // Case-sensitive email check
+        $user = User::whereRaw("email COLLATE SQL_Latin1_General_CP1_CS_AS = ?", [$credentials['email']])->first();
 
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
@@ -63,14 +64,12 @@ class AuthController extends Controller
             ]);
         }
 
-        // Cek status aktif
         if ($user->status !== 'aktif') {
             return response()->json([
                 'message' => 'Akun Anda non-aktif. Silakan hubungi admin.',
-            ], 403); // Forbidden
+            ], 403);
         }
 
-        // Generate dan simpan token baru
         $user->api_token = Str::random(80);
         $user->save();
 
@@ -167,5 +166,42 @@ class AuthController extends Controller
             'message' => 'Gagal mereset password. Token tidak valid atau sudah kedaluwarsa.',
             'status' => __($status) ?? $status,
         ], 400);
+    }
+
+    public function changePassword(Request $request)
+    {
+        $user = $request->user();
+
+        $validator = Validator::make($request->all(), [
+            'current_password'      => ['required'],
+            'new_password'          => ['required', 'confirmed', PasswordRules::min(8)],
+        ], [
+            'current_password.required' => 'Password lama wajib diisi.',
+            'new_password.required' => 'Password baru wajib diisi.',
+            'new_password.confirmed' => 'Konfirmasi password baru tidak cocok.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validasi gagal.',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        // Periksa apakah password lama benar
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'message' => 'Password lama salah.',
+            ], 400);
+        }
+
+        // Update password
+        $user->password = bcrypt($request->new_password);
+        $user->setRememberToken(Str::random(60));
+        $user->save();
+
+        return response()->json([
+            'message' => 'Password berhasil diubah.',
+        ], 200);
     }
 }
