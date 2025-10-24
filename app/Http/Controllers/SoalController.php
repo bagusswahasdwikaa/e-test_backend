@@ -135,7 +135,16 @@ class SoalController extends Controller
     /**
      * Update soal dan jawabannya
      */
-   public function update(Request $request, $id) {
+    public function update(Request $request, $id) {
+        $request->validate([
+            'pertanyaan' => 'required|string',
+            'media_type' => 'nullable|in:none,image,video',
+            'media_file' => 'nullable|file|mimes:jpeg,jpg,png|max:10240', // hanya gambar
+            'jawabans'   => 'required|array|size:4',
+            'jawabans.*.jawaban'    => 'required|string',
+            'jawabans.*.is_correct' => 'required|boolean',
+        ]);
+
         $soal = Soal::findOrFail($id);
 
         $soal->pertanyaan = $request->pertanyaan;
@@ -164,8 +173,18 @@ class SoalController extends Controller
                 $jawaban->save();
             }
         }
+        $soal->jawabans()->delete();
+        foreach ($request->jawabans as $jawabanData) {
+            $soal->jawabans()->create([
+                'jawaban' => $jawabanData['jawaban'],
+                'is_correct' => $jawabanData['is_correct'],
+            ]);
+        }
 
-        return response()->json(['message' => 'Soal berhasil diperbarui']);
+        return response()->json([
+            'message' => 'Soal berhasil diperbarui',
+            'data' => $soal->load('jawabans'),
+        ], 200);
     }
     /**
      * Tampilkan satu soal untuk edit
