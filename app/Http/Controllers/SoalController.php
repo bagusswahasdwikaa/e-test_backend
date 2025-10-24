@@ -14,13 +14,28 @@ class SoalController extends Controller
     /**
      * Simpan satu soal dan jawabannya
      */
-    public function store(StoreSoalRequest $request): JsonResponse
+    public function store(Request $request): JsonResponse
     {
+        $request->validate([
+            'ujian_id'   => 'required|exists:ujians,id_ujian',
+            'pertanyaan' => 'required|string',
+            'media_type' => 'nullable|in:none,image',
+            'media_file' => 'nullable|file|mimes:jpeg,jpg,png|max:6400',
+            'jawabans'   => 'required|array|size:4',
+            'jawabans.*.jawaban' => 'required|string',
+            'jawabans.*.is_correct' => 'required|boolean',
+        ]);
+
+        $mediaPath = null;
+        if ($request->hasFile('media_file')) {
+            $mediaPath = $request->file('media_file')->store('soal_media', 'public');
+        }
+
         $soal = Soal::create([
             'ujian_id'   => $request->ujian_id,
             'pertanyaan' => $request->pertanyaan,
             'media_type' => $request->media_type ?? 'none',
-            'media_path' => $request->media_path ?? null,
+            'media_path' => $mediaPath,
         ]);
 
         foreach ($request->jawabans as $jaw) {
@@ -43,24 +58,24 @@ class SoalController extends Controller
     public function storeBulk(Request $request): JsonResponse
     {
         $request->validate([
-            'ujian_id'              => 'required|exists:ujians,id_ujian',
-            'soals'                 => 'required|array|min:1',
-            'soals.*.pertanyaan'    => 'required|string',
-            'soals.*.media_type'    => 'nullable|in:none,image,video',
-            'soals.*.media_path'    => 'nullable|string',
-            'soals.*.jawabans'      => 'required|array|size:4',
-            'soals.*.jawabans.*.jawaban'    => 'required|string',
-            'soals.*.jawabans.*.is_correct' => 'required|boolean',
+            'ujian_id'   => 'required|exists:ujians,id_ujian',
+            'soals'      => 'required|array|min:1',
         ]);
 
         $created = [];
 
-        foreach ($request->soals as $item) {
+        foreach ($request->soals as $index => $item) {
+            // Simpan file jika ada
+            $mediaPath = null;
+            if (isset($item['media_file']) && $item['media_file'] instanceof \Illuminate\Http\UploadedFile) {
+                $mediaPath = $item['media_file']->store('soal_media', 'public');
+            }
+
             $soal = Soal::create([
                 'ujian_id'   => $request->ujian_id,
                 'pertanyaan' => $item['pertanyaan'],
                 'media_type' => $item['media_type'] ?? 'none',
-                'media_path' => $item['media_path'] ?? null,
+                'media_path' => $mediaPath,
             ]);
 
             foreach ($item['jawabans'] as $jaw) {
@@ -93,7 +108,7 @@ class SoalController extends Controller
             'id'         => $soal->id,
             'pertanyaan' => $soal->pertanyaan,
             'media_type' => $soal->media_type,
-            'media_path' => $soal->media_path,
+            'media_path' => $soal->media_path, // kirim path, bukan url
             'jawabans'   => [
                 'A' => [
                     'jawaban'    => $soal->jawabans[0]->jawaban ?? '',
@@ -118,7 +133,42 @@ class SoalController extends Controller
     }
 
     /**
-     * Tampilkan satu soal untuk keperluan edit
+     * Update soal dan jawabannya
+     */
+   public function update(Request $request, $id) {
+        $soal = Soal::findOrFail($id);
+
+        $soal->pertanyaan = $request->pertanyaan;
+        $soal->media_type = $request->media_type;
+
+        // Hapus media lama jika remove_media = true
+        if ($request->remove_media && $soal->media_path) {
+            Storage::delete($soal->media_path);
+            $soal->media_path = null;
+        }
+
+        // Upload media baru
+        if ($request->hasFile('media_file')) {
+            $path = $request->file('media_file')->store('soals');
+            $soal->media_path = $path;
+        }
+
+        $soal->save();
+
+        // Update jawaban
+        foreach ($request->jawabans as $idx => $j) {
+            $jawaban = $soal->jawabans()->where('id', $idx+1)->first();
+            if ($jawaban) {
+                $jawaban->jawaban = $j['jawaban'];
+                $jawaban->is_correct = $j['is_correct'] == '1';
+                $jawaban->save();
+            }
+        }
+
+        return response()->json(['message' => 'Soal berhasil diperbarui']);
+    }
+    /**
+     * Tampilkan satu soal untuk edit
      */
     public function show($id): JsonResponse
     {
@@ -137,57 +187,8 @@ class SoalController extends Controller
         return response()->json([
             'pertanyaan' => $soal->pertanyaan,
             'media_type' => $soal->media_type,
-            'media_url'  => $soal->media_path
-                             ? asset('storage/' . $soal->media_path)
-                             : null,
-            'media_path' => $soal->media_path,
+            'media_path' => $soal->media_path, // hanya kirim path saja
             'jawabans'   => $jawabans,
-        ]);
-    }
-
-    /**
-     * Update soal dan jawabannya, support file upload
-     */
-    public function update(Request $request, $id): JsonResponse
-    {
-        $request->validate([
-            'pertanyaan' => 'required|string',
-            'media_type' => 'required|in:none,image,video',
-            'media_file' => 'nullable|file|mimes:jpeg,jpg,png,mp4,mov|max:20480',
-            'jawabans' => 'required|array|size:4',
-            'jawabans.*.jawaban' => 'required|string',
-            'jawabans.*.is_correct' => 'required|boolean',
-        ]);
-
-        $soal = Soal::findOrFail($id);
-
-        // Jika ada file media baru, hapus file lama dan simpan yang baru
-        if ($request->hasFile('media_file')) {
-            if ($soal->media_path) {
-                Storage::disk('public')->delete($soal->media_path);
-            }
-            $path = $request->file('media_file')->store('soal_media', 'public');
-            $soal->media_path = $path;
-        }
-
-        $soal->pertanyaan = $request->pertanyaan;
-        $soal->media_type = $request->media_type;
-        $soal->save();
-
-        // Hapus jawaban lama
-        $soal->jawabans()->delete();
-
-        // Simpan jawaban baru
-        foreach ($request->jawabans as $jaw) {
-            $soal->jawabans()->create([
-                'jawaban' => $jaw['jawaban'],
-                'is_correct' => $jaw['is_correct'],
-            ]);
-        }
-
-        return response()->json([
-            'message' => 'Soal berhasil diperbarui',
-            'data' => $soal->load('jawabans'),
         ]);
     }
 }

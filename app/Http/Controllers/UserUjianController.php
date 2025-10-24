@@ -141,9 +141,9 @@ class UserUjianController extends Controller
             return [
                 'soal_id' => $soal->id,
                 'pertanyaan' => $soal->pertanyaan,
-                'media_url' => $soal->media_url,
+                'media_path' => $soal->media_path, // kirim path, bukan url
                 'media_type' => $soal->media_type,
-                'jawaban_user' => $jawabanUser[$soal->id] ?? null, // ambil jawaban terakhir user
+                'jawaban_user' => $jawabanUser[$soal->id] ?? null,
                 'jawabans' => $soal->jawabans->map(function ($jawaban) {
                     return [
                         'id' => $jawaban->id,
