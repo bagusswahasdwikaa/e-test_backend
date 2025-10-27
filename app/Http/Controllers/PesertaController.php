@@ -6,6 +6,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Storage;
 
 class PesertaController extends Controller
 {
@@ -139,6 +141,26 @@ class PesertaController extends Controller
             return response()->json([
                 'message' => 'Peserta tidak ditemukan.',
             ], 404);
+        }
+    }
+
+    public function importExcel(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:10048',
+        ]);
+
+        try {
+            Excel::import(new \App\Imports\PesertaImport, $request->file('file'));
+
+            return response()->json([
+                'message' => 'Import peserta berhasil disimpan ke tabel users.',
+            ], 201);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Gagal mengimpor peserta.',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
     }
 

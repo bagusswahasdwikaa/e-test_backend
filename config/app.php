@@ -194,6 +194,7 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
+        Maatwebsite\Excel\ExcelServiceProvider::class,
 
     ],
 
@@ -213,5 +214,6 @@ return [
     ])->toArray(),
 
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
+    'Excel' => Maatwebsite\Excel\Facades\Excel::class,
 
 ];

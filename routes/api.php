@@ -67,6 +67,7 @@ Route::apiResource('soals', SoalController::class)->except(['index']);
 Route::apiResource('peserta', PesertaController::class);
 Route::get('/peserta/{id}/edit', [PesertaController::class, 'edit'])->name('peserta.edit');
 Route::apiResource('list-peserta', ListPesertaController::class);
+Route::post('/peserta/import', [PesertaController::class, 'importExcel'])->name('peserta.import');
 
 // =========================
 // NILAI PESERTA
