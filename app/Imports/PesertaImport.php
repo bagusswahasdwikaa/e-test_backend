@@ -38,7 +38,7 @@ class PesertaImport implements ToModel, WithHeadingRow
             'last_name'  => trim($row['last_name']),
             'email'      => strtolower(trim($row['email'])),
             'password'   => Hash::make($password),
-            'status'     => $row['status'] ?? 'aktif',
+            'status'     => $row['status'] ?? 'aktif' || 'non aktif',
             'role'       => 'user',
             'instansi'   => trim($row['instansi']),
             'bio'        => $row['bio'] ?? null,

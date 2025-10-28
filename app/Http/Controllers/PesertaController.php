@@ -147,7 +147,7 @@ class PesertaController extends Controller
     public function importExcel(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:10048',
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:30000',
         ]);
 
         try {
