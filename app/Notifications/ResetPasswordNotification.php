@@ -19,9 +19,9 @@ class ResetPasswordNotification extends ResetPasswordBase
         $url = url(config('app.frontend_url') . "/authentication/reset-password?token={$this->token}&email=" . urlencode($notifiable->getEmailForPasswordReset()));
 
         return (new MailMessage)
-            ->subject('Reset Password Notification')
-            ->line('Anda menerima email ini karena kami menerima permintaan reset password untuk akun Anda.')
+            ->subject('Reset Kata Sandi Notifikasi')
+            ->line('Anda menerima email ini karena kami menerima permintaan reset kata sandi untuk akun Anda.')
             ->action('Reset Password', $url)
-            ->line('Jika Anda tidak meminta reset password, abaikan email ini.');
+            ->line('Jika Anda tidak meminta reset kata sandi, abaikan email ini.');
     }
 }

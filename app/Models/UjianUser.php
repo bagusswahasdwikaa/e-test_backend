@@ -48,7 +48,7 @@ class UjianUser extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
     /**
@@ -123,6 +123,6 @@ class UjianUser extends Model
 
     public function hasilUjian()
     {
-        return $this->hasOne(HasilUjian::class, 'ujian_user_id');
+        return $this->hasOne(HasilUjian::class, 'ujian_user_id', 'id');
     }
 }

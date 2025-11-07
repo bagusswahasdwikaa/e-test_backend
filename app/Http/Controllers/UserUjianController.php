@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use App\Http\Controllers\SertifikatController;
 use Carbon\Carbon;
 
 class UserUjianController extends Controller
@@ -331,6 +332,10 @@ class UserUjianController extends Controller
                 'nama_ujian' => $ujianUser->ujian->nama_ujian ?? 'Ujian',
             ]
         );
+
+        if ($jenisUjian === 'POSTEST') {
+            SertifikatController::generateSertifikat($ujianUser);
+        }
 
         return response()->json([
             'success' => true,
