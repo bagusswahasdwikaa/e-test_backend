@@ -121,3 +121,5 @@ Route::middleware('auth:api')->group(function () {
 
 // === ALIAS OPSIONAL (public list ujian untuk front jika perlu)
 Route::get('/daftar-ujian', [UjianController::class, 'index'])->name('ujians.list');
+
+

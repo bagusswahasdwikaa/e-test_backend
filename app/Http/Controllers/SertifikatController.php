@@ -79,26 +79,36 @@ class SertifikatController extends Controller
             $namaFile = 'sertifikat_' . $user->id . '_' . $ujian->id_ujian . '_' . time() . '.pdf';
             $path = 'sertifikat/' . $namaFile;
 
-            // Pastikan folder ada di storage/public/sertifikat
-            if (!Storage::exists('public/sertifikat')) {
-                Storage::makeDirectory('public/sertifikat');
+            // Pastikan folder ada di storage/app/public/sertifikat
+            if (!Storage::disk('public')->exists('sertifikat')) {
+                Storage::disk('public')->makeDirectory('sertifikat');
             }
 
-            // Buat PDF dari template
-            $pdf = Pdf::loadView('sertifikat.template', [
-                'nama' => trim($user->first_name . ' ' . $user->last_name),
-                'nama_ujian' => $ujian->nama_ujian,
-                'tanggal' => Carbon::now()->translatedFormat('d F Y'),
+            // Data untuk template
+            $data = [
+                'nama' => strtoupper(trim($user->first_name . ' ' . $user->last_name)),
                 'nilai' => $ujianUser->nilai,
-            ])
-            ->setOption('isHtml5ParserEnabled', true) // Enable HTML5 parsing
-            ->setOption('isRemoteEnabled', true) // Enable remote resources
-            ->setOption('defaultFont', 'DejaVu Sans') // Font default yang support Unicode
-            ->setOption('dpi', 300); // Resolusi PDF (semakin tinggi semakin tajam)
+                'tanggal_ujian' => Carbon::parse($ujianUser->created_at)->translatedFormat('d-m-Y'),
+                'tanggal_terbit' => Carbon::now()->translatedFormat('d-m-Y'),
+                'mentor' => 'Samira Hadid',
+                'jabatan_mentor' => 'Mentor Penulisan',
+                'ketua' => 'Ketut Susilo',
+                'jabatan_ketua' => 'Ketua Organisasi'
+            ];
 
+            // Buat PDF dari template dengan konfigurasi A4 Landscape
+            $pdf = Pdf::loadView('sertifikat.template', $data)
+                ->setPaper('a4', 'landscape')
+                ->setOption('isHtml5ParserEnabled', true)
+                ->setOption('isRemoteEnabled', true)
+                ->setOption('defaultFont', 'DejaVu Sans')
+                ->setOption('dpi', 150)
+                ->setOption('enable-local-file-access', true)
+                ->setOption('chroot', [public_path()])
+                ->setOption('viewport-size', '1920x1080');
 
-            // Simpan ke folder storage/app/public/sertifikat
-            Storage::put('public/' . $path, $pdf->output());
+            // Simpan ke storage/app/public/sertifikat
+            Storage::disk('public')->put($path, $pdf->output());
 
             // Simpan ke database
             $sertifikat = Sertifikat::create([
@@ -118,7 +128,7 @@ class SertifikatController extends Controller
     }
 
     /**
-     * Menampilkan / mengunduh sertifikat
+     * Menampilkan sertifikat (stream inline di browser)
      */
     public function show($id)
     {
@@ -132,7 +142,16 @@ class SertifikatController extends Controller
                 ], 401);
             }
 
-            $sertifikat = Sertifikat::where('id', $id)
+            $id = (int) $id;
+            if ($id <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ID sertifikat tidak valid.'
+                ], 400);
+            }
+
+            $sertifikat = Sertifikat::with(['ujian', 'user'])
+                ->where('id', $id)
                 ->where('user_id', $user->id)
                 ->first();
 
@@ -143,41 +162,55 @@ class SertifikatController extends Controller
                 ], 404);
             }
 
-            /**
-             * Struktur penyimpanan di server:
-             * public/storage/public/sertifikat/namafile.pdf
-             * jadi file_path = public_path('storage/public/sertifikat/namafile.pdf')
-             */
-            $filePath = public_path('storage/public/' . $sertifikat->path_file);
+            // Cek apakah file fisik ada
+            $filePath = storage_path('app/public/' . $sertifikat->path_file);
 
+            // Jika file tidak ada, regenerate PDF
             if (!file_exists($filePath)) {
-                Log::error('File sertifikat tidak ditemukan di path: ' . $filePath);
+                Log::warning('File sertifikat tidak ditemukan, regenerating: ' . $filePath);
+                
+                // Regenerate PDF
+                $ujianUser = UjianUser::where('user_id', $user->id)
+                    ->where('ujian_id', $sertifikat->ujian_id)
+                    ->first();
 
-                return response()->json([
-                    'success' => false,
-                    'message' => 'File sertifikat tidak ditemukan di server.'
-                ], 404);
+                if (!$ujianUser) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Data ujian tidak ditemukan untuk regenerasi sertifikat.'
+                    ], 404);
+                }
+
+                $pdf = $this->generatePdfFromSertifikat($sertifikat, $ujianUser);
+                
+                // Simpan file yang baru
+                Storage::disk('public')->put($sertifikat->path_file, $pdf->output());
+                $filePath = storage_path('app/public/' . $sertifikat->path_file);
             }
 
-            // Menyajikan file PDF agar bisa langsung dibuka atau diunduh
+            // Stream PDF dengan header yang tepat untuk A4 Landscape
             return response()->file($filePath, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . $sertifikat->nama_sertifikat . '"'
+                'Content-Disposition' => 'inline; filename="' . $sertifikat->nama_sertifikat . '"',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
             ]);
+
         } catch (\Exception $e) {
             Log::error('Error in SertifikatController@show: ' . $e->getMessage());
             Log::error($e->getTraceAsString());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat mengunduh sertifikat.',
+                'message' => 'Terjadi kesalahan saat menampilkan sertifikat.',
                 'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
 
     /**
-     * Fungsi download eksplisit (opsional)
+     * Download sertifikat (force download)
      */
     public function download($id)
     {
@@ -191,7 +224,8 @@ class SertifikatController extends Controller
                 ], 401);
             }
 
-            $sertifikat = Sertifikat::where('id', $id)
+            $sertifikat = Sertifikat::with(['ujian', 'user'])
+                ->where('id', $id)
                 ->where('user_id', $user->id)
                 ->first();
 
@@ -202,27 +236,83 @@ class SertifikatController extends Controller
                 ], 404);
             }
 
-            $filePath = public_path('storage/public/' . $sertifikat->path_file);
+            // Cek apakah file fisik ada
+            $filePath = storage_path('app/public/' . $sertifikat->path_file);
 
+            // Jika file tidak ada, regenerate PDF
             if (!file_exists($filePath)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'File sertifikat tidak ditemukan di server.'
-                ], 404);
+                Log::warning('File sertifikat tidak ditemukan, regenerating: ' . $filePath);
+                
+                // Regenerate PDF
+                $ujianUser = UjianUser::where('user_id', $user->id)
+                    ->where('ujian_id', $sertifikat->ujian_id)
+                    ->first();
+
+                if (!$ujianUser) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Data ujian tidak ditemukan untuk regenerasi sertifikat.'
+                    ], 404);
+                }
+
+                $pdf = $this->generatePdfFromSertifikat($sertifikat, $ujianUser);
+                
+                // Simpan file yang baru
+                Storage::disk('public')->put($sertifikat->path_file, $pdf->output());
+                $filePath = storage_path('app/public/' . $sertifikat->path_file);
             }
 
+            // Download PDF dengan header yang tepat
             return response()->download($filePath, $sertifikat->nama_sertifikat, [
                 'Content-Type' => 'application/pdf',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
             ]);
+
         } catch (\Exception $e) {
             Log::error('Error in SertifikatController@download: ' . $e->getMessage());
             Log::error($e->getTraceAsString());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat mengunduh file sertifikat.',
+                'message' => 'Terjadi kesalahan saat mengunduh sertifikat.',
                 'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
+    }
+
+    /**
+     * Helper function untuk generate PDF dari data sertifikat
+     */
+    private function generatePdfFromSertifikat($sertifikat, $ujianUser)
+    {
+        $user = $sertifikat->user;
+
+        $data = [
+            'nama' => strtoupper(trim($user->first_name . ' ' . $user->last_name)),
+            'nilai' => $ujianUser->nilai,
+            'tanggal_ujian' => Carbon::parse($ujianUser->created_at)->translatedFormat('d-m-Y'),
+            'tanggal_terbit' => Carbon::parse($sertifikat->tanggal_diterbitkan)->translatedFormat('d-m-Y'),
+            'mentor' => 'Samira Hadid',
+            'jabatan_mentor' => 'Mentor Penulisan',
+            'ketua' => 'Ketut Susilo',
+            'jabatan_ketua' => 'Ketua Organisasi'
+        ];
+
+        // Buat PDF dengan konfigurasi optimal untuk A4 Landscape
+        return Pdf::loadView('sertifikat.template', $data)
+            ->setPaper('a4', 'landscape')
+            ->setOption('isHtml5ParserEnabled', true)
+            ->setOption('isRemoteEnabled', true)
+            ->setOption('defaultFont', 'DejaVu Sans')
+            ->setOption('dpi', 150)
+            ->setOption('enable-local-file-access', true)
+            ->setOption('chroot', [public_path()])
+            ->setOption('viewport-size', '1920x1080')
+            ->setOption('margin-top', 0)
+            ->setOption('margin-right', 0)
+            ->setOption('margin-bottom', 0)
+            ->setOption('margin-left', 0);
     }
 }
