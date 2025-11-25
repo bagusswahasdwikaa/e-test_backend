@@ -36,6 +36,7 @@ class UserUjianController extends Controller
 
                 return [
                     'ujian_id' => $ujianUser->ujian->id_ujian,
+                    'jenis_ujian' => $ujianUser->ujian->jenis_ujian,
                     'nilai' => $ujianUser->nilai,
                     'status_peserta' => $ujianUser->hasilUjian
                         ? $ujianUser->hasilUjian->status
@@ -43,6 +44,7 @@ class UserUjianController extends Controller
                     'ujian' => [
                         'id' => $ujianUser->ujian->id_ujian,
                         'nama' => $ujianUser->ujian->nama_ujian,
+                        'jenis_ujian' => $ujianUser->ujian->jenis_ujian,
                         'durasi' => $ujianUser->ujian->durasi,
                         'jumlah_soal' => $ujianUser->ujian->jumlah_soal,
                         'kode_soal' => $ujianUser->ujian->kode_soal,

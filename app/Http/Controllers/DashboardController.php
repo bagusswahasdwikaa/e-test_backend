@@ -9,17 +9,11 @@ use Illuminate\Http\JsonResponse;
 
 class DashboardController extends Controller
 {
-    /**
-     * Statistik dashboard:
-     * 1. Jumlah peserta (aktif / tidak aktif) dengan role = user
-     * 2. Jumlah ujian (aktif / tidak aktif, selesai, belum dimulai)
-     * 3. Rata-rata nilai tiap ujian
-     */
     public function index(): JsonResponse
     {
         /*
         |--------------------------------------------------------------------------
-        | 1. Jumlah Peserta (role = user) termasuk aktif & tidak aktif
+        | 1. Jumlah Peserta
         |--------------------------------------------------------------------------
         */
         $pesertaQuery = User::where('role', 'user')
@@ -43,29 +37,38 @@ class DashboardController extends Controller
             'tidak_aktif' => $tidakAktif,
             'total' => $aktif + $tidakAktif,
         ];
+
+
         /*
         |--------------------------------------------------------------------------
-        | 2. Jumlah Ujian
+        | 2. Jumlah Ujian (Selesai diganti “Tidak Aktif”)
         |--------------------------------------------------------------------------
-        | Status ujian diambil dari accessor getStatusAttribute() di model Ujian
+        | Status dari accessor getStatusAttribute() : 
+        | - 'Aktif'
+        | - 'Belum Dimulai'
+        | - 'Non Aktif'
+        | - 'Selesai'
+        |--------------------------------------------------------------------------
         */
         $ujianAktif = 0;
-        $ujianTidakAktif = 0;
         $ujianBelumDimulai = 0;
-        $ujianSelesai = 0;
+        $ujianTidakAktif = 0;
 
         $ujians = Ujian::all();
+
         foreach ($ujians as $ujian) {
             switch ($ujian->status) {
                 case 'Aktif':
                     $ujianAktif++;
                     break;
+
                 case 'Belum Dimulai':
                     $ujianBelumDimulai++;
                     break;
+
+                // Semua status lain dianggap tidak aktif
+                case 'Non Aktif':
                 case 'Selesai':
-                    $ujianSelesai++;
-                    break;
                 default:
                     $ujianTidakAktif++;
                     break;
@@ -75,10 +78,10 @@ class DashboardController extends Controller
         $jumlahUjian = [
             'aktif' => $ujianAktif,
             'belum_dimulai' => $ujianBelumDimulai,
-            'selesai' => $ujianSelesai,
-            'non_aktif' => $ujianTidakAktif,
+            'tidak_aktif' => $ujianTidakAktif,
             'total' => $ujians->count(),
         ];
+
 
         /*
         |--------------------------------------------------------------------------

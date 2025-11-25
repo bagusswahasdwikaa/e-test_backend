@@ -17,6 +17,6 @@
     </ul>
 
     
-    <p>Silakan login E-TEST http://localhost:3000/authentication/login untuk mengerjakan ujian tersebut. Semoga sukses!</p>
+    <p>Silakan login E-TEST http://137.40.52.32:3000/authentication/login untuk mengerjakan ujian tersebut. Semoga sukses!</p>
 </body>
 </html>

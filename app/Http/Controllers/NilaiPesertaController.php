@@ -22,6 +22,7 @@ class NilaiPesertaController extends Controller
                     'nama_lengkap' => $item->user->full_name,
                     'id_ujian' => $item->ujian?->id_ujian,
                     'nama_ujian' => $item->ujian?->nama_ujian,
+                    'jenis_ujian' => $item->ujian?->jenis_ujian,
                     'tanggal' => $item->submitted_at?->format('Y-m-d H:i'),
                     'nilai' => $item->nilai,
                     'status' => $item->status_peserta,
@@ -47,6 +48,7 @@ class NilaiPesertaController extends Controller
             ->map(function ($item) {
                 return [
                     'nama_ujian' => $item->ujian?->nama_ujian ?? '-',
+                    'jenis_ujian' => $item->ujian?->jenis_ujian ?? '-',
                     'nilai' => $item->nilai,
                     'status' => $item->status_peserta ?? 'Belum Dikerjakan',
                     'waktu_selesai' => $item->submitted_at?->format('d-m-Y H:i:s'),

@@ -139,7 +139,7 @@ class SoalController extends Controller
         $request->validate([
             'pertanyaan' => 'required|string',
             'media_type' => 'nullable|in:none,image,video',
-            'media_file' => 'nullable|file|mimes:jpeg,jpg,png|max:10240', // hanya gambar
+            'media_file' => 'nullable|image', // hanya gambar
             'jawabans'   => 'required|array|size:4',
             'jawabans.*.jawaban'    => 'required|string',
             'jawabans.*.is_correct' => 'required|boolean',

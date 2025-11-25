@@ -11,9 +11,20 @@ use Illuminate\Support\Facades\Storage;
 
 class PesertaController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $peserta = User::where('role', 'user')->get([
+        // Ambil query param status (opsional)
+        $status = $request->query('status');
+
+        // Query dasar
+        $query = User::where('role', 'user');
+
+        // Jika status diisi, filter
+        if ($status && in_array($status, ['aktif', 'non aktif'])) {
+            $query->where('status', $status);
+        }
+
+        $peserta = $query->get([
             'id',
             'first_name',
             'last_name',

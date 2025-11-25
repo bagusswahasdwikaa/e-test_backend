@@ -211,7 +211,7 @@ return [
     */
 
     'aliases' => Facade::defaultAliases()->merge([
-        'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
+        'frontend_url' => env('FRONTEND_URL', 'http://137.40.52.32:3000'),
         'Excel' => Maatwebsite\Excel\Facades\Excel::class,
         'PDF' => Barryvdh\DomPDF\Facade\Pdf::class,
     ])->toArray(),

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\SertifikatController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,3 +17,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/sertifikat', function () {
+    return view('sertifikat.template');
+});
+
+Route::get('/sertifikat', [SertifikatController::class, 'showTemplate']);

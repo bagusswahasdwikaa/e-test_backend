@@ -28,6 +28,8 @@ class RankController extends Controller
                     'rank' => $index + 1,
                     'user_id' => $item->user_id,
                     'nama_lengkap' => $item->user->full_name ?? '-',
+                    'nama_ujian' => $item->ujian?->nama_ujian ?? '-',
+                    'jenis_ujian' => $item->ujian?->jenis_ujian ?? '-',
                     'nilai' => $item->nilai,
                     'status' => $item->status_peserta ?? '-',
                     'waktu_selesai' => $item->submitted_at?->format('d-m-Y H:i:s') ?? '-',
