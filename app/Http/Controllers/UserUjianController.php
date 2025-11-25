@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Ujian;
 use App\Models\UjianUser;
 use App\Models\Soal;
+use App\Models\Jawaban;
 use App\Models\HasilUjian;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,7 +43,7 @@ class UserUjianController extends Controller
                         ? $ujianUser->hasilUjian->status
                         : 'Belum Dikerjakan',
                     'ujian' => [
-                        'id' => $ujianUser->ujian->id_ujian,
+                        'id_ujian' => $ujianUser->ujian->id_ujian,
                         'nama' => $ujianUser->ujian->nama_ujian,
                         'jenis_ujian' => $ujianUser->ujian->jenis_ujian,
                         'durasi' => $ujianUser->ujian->durasi,
@@ -57,7 +58,7 @@ class UserUjianController extends Controller
         ]);
     }
 
-    public function show($id): JsonResponse
+    public function show(string $id): JsonResponse
     {
         $user = Auth::user();
 
@@ -73,7 +74,7 @@ class UserUjianController extends Controller
         ]);
     }
 
-    public function kerjakan(Request $request, $id)
+    public function kerjakan(Request $request, $id): JsonResponse
     {
         $request->validate([
             'kode_soal' => 'required|string',
@@ -109,7 +110,7 @@ class UserUjianController extends Controller
         ]);
     }
 
-    public function getSoalUjian($id): JsonResponse
+    public function getSoalUjian(string $id): JsonResponse
     {
         $user = Auth::user();
 
@@ -178,7 +179,7 @@ class UserUjianController extends Controller
         return $jawabanLama;
     }
 
-    public function simpanJawaban(Request $request, $id): JsonResponse
+    public function simpanJawaban(Request $request, string $id): JsonResponse
     {
         $user = Auth::user();
 
@@ -218,7 +219,7 @@ class UserUjianController extends Controller
         ]);
     }
 
-    public function submitUjian(Request $request, $id): JsonResponse
+    public function submitUjian(Request $request, string $id): JsonResponse
     {
         $user = Auth::user();
 
@@ -256,15 +257,18 @@ class UserUjianController extends Controller
         $hasilKoreksi = [];
         $jumlahBenar = 0;
 
+        /** @var Soal $soal */
         foreach ($soals as $soal) {
             $userAnswer = $jawabanFinal[$soal->id] ?? null;
             $isCorrect = false;
             $kunci = null;
 
             if ($soal->jawabans->count() > 0) {
-                $kunci = $soal->jawabans->firstWhere('is_correct', true);
-                if ($kunci && (string)$userAnswer === (string)$kunci->id) {
+                /** @var Jawaban|null $jawabanBenar */
+                $jawabanBenar = $soal->jawabans->firstWhere('is_correct', true);
+                if ($jawabanBenar && (string)$userAnswer === (string)$jawabanBenar->id) {
                     $isCorrect = true;
+                    $kunci = $jawabanBenar->id;
                 }
             } elseif (!empty($soal->jawaban_benar)) {
                 $kunci = $soal->jawaban_benar;
@@ -283,7 +287,7 @@ class UserUjianController extends Controller
             $hasilKoreksi[] = [
                 'soal_id' => $soal->id,
                 'jawaban_user' => $userAnswer,
-                'jawaban_benar' => $kunci instanceof \App\Models\Jawaban ? $kunci->id : $kunci,
+                'jawaban_benar' => $kunci,
                 'is_correct' => $isCorrect,
             ];
         }
@@ -351,7 +355,7 @@ class UserUjianController extends Controller
         ]);
     }
 
-    public function ulangUjian($id): JsonResponse
+    public function ulangUjian(string $id): JsonResponse
     {
         $user = Auth::user();
 
